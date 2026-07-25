@@ -1,11 +1,6 @@
 import fs from 'fs';
-import { User, isPostgres, pool, getJsonDbPath } from '../config/db.js';
-
-export interface IUserRepository {
-  createUser(user: Omit<User, 'createdAt' | 'updatedAt'>): Promise<User>;
-  getUserByEmail(email: string): Promise<User | null>;
-  getUserById(id: string): Promise<User | null>;
-}
+import { isPostgres, pool, getJsonDbPath } from '../config/db.js';
+import type { User, IUserRepository } from '../interfaces/index.js';
 
 class PostgresUserRepository implements IUserRepository {
   async createUser(user: Omit<User, 'createdAt' | 'updatedAt'>): Promise<User> {

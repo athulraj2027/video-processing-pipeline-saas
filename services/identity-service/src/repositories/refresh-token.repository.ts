@@ -1,12 +1,6 @@
 import fs from 'fs';
-import { RefreshToken, isPostgres, pool, getJsonDbPath } from '../config/db.js';
-
-export interface IRefreshTokenRepository {
-  createRefreshToken(token: Omit<RefreshToken, 'createdAt'>): Promise<RefreshToken>;
-  getRefreshToken(token: string): Promise<RefreshToken | null>;
-  deleteRefreshToken(token: string): Promise<void>;
-  deleteUserRefreshTokens(userId: string): Promise<void>;
-}
+import { isPostgres, pool, getJsonDbPath } from '../config/db.js';
+import type { RefreshToken, IRefreshTokenRepository } from '../interfaces/index.js';
 
 class PostgresRefreshTokenRepository implements IRefreshTokenRepository {
   async createRefreshToken(token: Omit<RefreshToken, 'createdAt'>): Promise<RefreshToken> {

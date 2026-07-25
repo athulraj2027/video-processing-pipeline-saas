@@ -2,24 +2,10 @@ import fs from 'fs';
 import path from 'path';
 import pg from 'pg';
 import { env } from './env.js';
+import type { User } from '../interfaces/user.interface.js';
+import type { RefreshToken } from '../interfaces/refresh-token.interface.js';
 
-export interface User {
-  id: string;
-  email: string;
-  passwordHash: string;
-  role: string;
-  tenantId?: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface RefreshToken {
-  id: string;
-  userId: string;
-  token: string;
-  expiresAt: Date;
-  createdAt: Date;
-}
+export type { User, RefreshToken };
 
 export const isPostgres = !!env.DATABASE_URL;
 

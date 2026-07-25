@@ -53,6 +53,15 @@
       "tenantId": "tenant_abc",
       "createdAt": "2026-07-25T04:48:07.988Z",
       "updatedAt": "2026-07-25T04:48:07.988Z"
+    },
+    {
+      "id": "2b811a01-1715-4fe4-8d93-79d2f918ed26",
+      "email": "test-1784960416773@example.com",
+      "passwordHash": "$2a$10$dNS9R/30GM25kcMEQ3XAQOKwQJZQ4Qz6Z2O6xx54v6ocjlBfYuxjy",
+      "role": "tenant_admin",
+      "tenantId": "tenant_abc",
+      "createdAt": "2026-07-25T06:20:17.103Z",
+      "updatedAt": "2026-07-25T06:20:17.103Z"
     }
   ],
   "refreshTokens": []

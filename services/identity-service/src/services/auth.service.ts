@@ -2,8 +2,9 @@ import crypto from 'crypto';
 import bcryptjs from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { env } from '../config/env.js';
-import userRepository, { IUserRepository } from '../repositories/user.repository.js';
-import refreshTokenRepository, { IRefreshTokenRepository } from '../repositories/refresh-token.repository.js';
+import userRepository from '../repositories/user.repository.js';
+import refreshTokenRepository from '../repositories/refresh-token.repository.js';
+import type { IUserRepository, IRefreshTokenRepository } from '../interfaces/index.js';
 
 import { ConflictError, UnauthorizedError, NotFoundError } from '../errors/appError.js';
 import { parseDuration } from '../utils/parseDuration.js';

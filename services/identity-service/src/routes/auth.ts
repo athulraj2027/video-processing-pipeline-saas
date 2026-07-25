@@ -3,11 +3,8 @@ import { authenticate } from '@saas-vod/auth-middleware';
 import { getHealth } from '../controllers/health.controller.js';
 import { signup, login, refresh, logout } from '../controllers/auth.controller.js';
 import { getMe } from '../controllers/user.controller.js';
-import { validateBody } from '../middlewares/validation.js';
-import { signupSchema } from '../schemas/signup.js';
-import { loginSchema } from '../schemas/login.js';
-import { refreshSchema } from '../schemas/refresh.js';
-import { logoutSchema } from '../schemas/logout.js';
+import { validateBody } from '../middlewares/middleware.js';
+import { signupSchema, loginSchema, refreshSchema, logoutSchema } from '../schemas/auth.schema.js';
 
 const router = Router();
 
