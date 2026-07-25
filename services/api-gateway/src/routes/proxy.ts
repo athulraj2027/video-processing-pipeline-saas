@@ -90,13 +90,4 @@ router.use(
   createProxyMiddleware(buildProxyOptions(env.JOB_ORCHESTRATOR_URL))
 );
 
-// Health check endpoint for the Gateway
-router.get('/health', (req: Request, res: Response) => {
-  res.json({
-    status: 'UP',
-    timestamp: new Date().toISOString(),
-    tenantId: req.tenantId || 'unresolved',
-  });
-});
-
 export default router;
