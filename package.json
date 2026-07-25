@@ -9,6 +9,10 @@
   ],
   "scripts": {
     "gateway:dev": "npm run dev -w services/api-gateway",
-    "gateway:build": "npm run build -w services/api-gateway"
+    "gateway:build": "npm run build -w services/api-gateway",
+    "identity:dev": "npm run dev -w services/identity-service",
+    "identity:build": "npm run build -w services/identity-service",
+    "identity:start": "npm run start -w services/identity-service",
+    "libs:build": "npm run build -w libs/auth-middleware"
   }
 }
