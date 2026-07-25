@@ -16,6 +16,9 @@
     "tenant:dev": "npm run dev -w services/tenant-service",
     "tenant:build": "npm run build -w services/tenant-service",
     "tenant:start": "npm run start -w services/tenant-service",
+    "catalog:dev": "npm run dev -w services/catalog-service",
+    "catalog:build": "npm run build -w services/catalog-service",
+    "catalog:start": "npm run start -w services/catalog-service",
     "libs:build": "npm run build -w libs/auth-middleware"
   }
 }

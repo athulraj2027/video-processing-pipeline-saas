@@ -1,0 +1,397 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/client"
+}
+
+enum CatalogStatus {
+  DRAFT
+  REVIEW
+  PUBLISHED
+  ARCHIVED
+  SCHEDULED
+  UNPUBLISHED
+}
+
+enum ContentType {
+  MOVIE
+  SERIES
+  EPISODE
+  SHORT
+  TRAILER
+  BONUS
+}
+
+enum PricingModel {
+  PPV
+  RENTAL
+  SUBSCRIPTION
+  HYBRID
+  FREE
+}
+
+enum AccessWindowType {
+  NONE
+  RENTAL_24H
+  RENTAL_48H
+  RENTAL_72H
+  LIFETIME
+  CUSTOM
+}
+
+enum GeoRestrictionMode {
+  ALLOWLIST
+  BLOCKLIST
+  NONE
+}
+
+enum Visibility {
+  PUBLIC
+  UNLISTED
+  PRIVATE
+}
+
+enum MediaLanguageKind {
+  AUDIO
+  SUBTITLE
+  DUB
+}
+
+model Tenant {
+  id    String @id @default(uuid())
+  films Film[]
+
+  @@map("tenants")
+}
+
+model Film {
+  id                String         @id @default(uuid())
+  tenantId          String
+
+  title             String
+  slug              String
+  subtitle          String?
+  description       String?
+  synopsis          String?
+  tagline           String?
+  contentType       ContentType    @default(MOVIE)
+
+  status            CatalogStatus  @default(DRAFT)
+  visibility        Visibility     @default(PUBLIC)
+  pricingModel      PricingModel   @default(PPV)
+  accessWindow      AccessWindowType @default(NONE)
+
+  runtimeSeconds    Int?
+  releaseDate       DateTime?
+  publishAt         DateTime?
+  unpublishAt       DateTime?
+
+  ageRating         String?
+  maturityRating    String?
+  languageCode      String?
+  countryOfOrigin   String?
+  isFeatured        Boolean        @default(false)
+  isOriginal        Boolean        @default(false)
+
+  posterUrl         String?
+  backdropUrl       String?
+  trailerUrl        String?
+  thumbnailUrl      String?
+
+  searchKeywords    String[]
+  cast              Json           @default("[]")
+  crew              Json           @default("[]")
+  genres            String[]
+  tags              String[]
+  metadata          Json           @default("{}")
+  seo               Json           @default("{}")
+
+  geoRestrictionMode GeoRestrictionMode @default(NONE)
+  allowedCountries   String[]
+  blockedCountries   String[]
+
+  drmRequired       Boolean        @default(false)
+  watermarkRequired  Boolean        @default(false)
+
+  createdById       String?
+  updatedById       String?
+  publishedById     String?
+
+  createdAt         DateTime       @default(now()) @map("created_at")
+  updatedAt         DateTime       @updatedAt @map("updated_at")
+  publishedAt       DateTime?
+  archivedAt        DateTime?
+
+  tenant            Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  pricing           FilmPricing?
+  assets            FilmAsset[]
+  subtitles         FilmSubtitle[]
+  chapters          FilmChapter[]
+  variants          FilmVariant[]
+  availability      FilmAvailability?
+  bundles           FilmBundleItem[]
+  watchlistEntries  WatchlistItem[]
+  ratings           FilmRating[]
+  filmGenres        FilmGenre[]
+
+  @@unique([tenantId, slug])
+  @@index([tenantId, status])
+  @@index([tenantId, visibility])
+  @@index([tenantId, pricingModel])
+  @@index([tenantId, releaseDate])
+  @@index([tenantId, isFeatured])
+  @@map("films")
+}
+
+model FilmPricing {
+  id                  String   @id @default(uuid())
+  filmId              String   @unique
+
+  currency            String   @default("USD")
+  ppvPrice            Decimal? @db.Decimal(10, 2)
+  rentalPrice         Decimal? @db.Decimal(10, 2)
+  subscriptionPrice   Decimal? @db.Decimal(10, 2)
+  salePrice           Decimal? @db.Decimal(10, 2)
+  compareAtPrice      Decimal? @db.Decimal(10, 2)
+
+  rentalDurationHours  Int?
+  subscriptionIncluded Boolean  @default(false)
+  bundleEligible      Boolean   @default(true)
+
+  taxInclusive        Boolean   @default(false)
+  metadata            Json      @default("{}")
+
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+
+  film                Film      @relation(fields: [filmId], references: [id], onDelete: Cascade)
+
+  @@map("film_pricing")
+}
+
+model FilmAvailability {
+  id                String   @id @default(uuid())
+  filmId            String   @unique
+
+  startsAt          DateTime?
+  endsAt            DateTime?
+  preorderStartsAt   DateTime?
+  preorderEndsAt     DateTime?
+
+  isAvailable       Boolean  @default(true)
+  regionLocked      Boolean  @default(false)
+
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  film              Film     @relation(fields: [filmId], references: [id], onDelete: Cascade)
+
+  @@map("film_availability")
+}
+
+model FilmAsset {
+  id                String   @id @default(uuid())
+  filmId            String
+
+  type              String
+  storageKey        String
+  url               String?
+  mimeType          String?
+  sizeBytes         BigInt?
+  checksum          String?
+  width             Int?
+  height            Int?
+  durationSeconds   Int?
+  bitrateKbps       Int?
+
+  isPrimary         Boolean  @default(false)
+  isPublic          Boolean  @default(false)
+  metadata          Json     @default("{}")
+
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  film              Film     @relation(fields: [filmId], references: [id], onDelete: Cascade)
+
+  @@index([filmId, type])
+  @@index([filmId, isPrimary])
+  @@map("film_assets")
+}
+
+model FilmSubtitle {
+  id                String              @id @default(uuid())
+  filmId            String
+
+  languageCode      String
+  kind              MediaLanguageKind   @default(SUBTITLE)
+  label             String?
+  storageKey        String
+  url               String?
+  isDefault         Boolean             @default(false)
+  isForced          Boolean             @default(false)
+  isAutoGenerated   Boolean             @default(false)
+  metadata          Json                @default("{}")
+
+  createdAt         DateTime            @default(now()) @map("created_at")
+  updatedAt         DateTime            @updatedAt @map("updated_at")
+
+  film              Film                @relation(fields: [filmId], references: [id], onDelete: Cascade)
+
+  @@unique([filmId, languageCode, kind])
+  @@index([filmId])
+  @@map("film_subtitles")
+}
+
+model FilmChapter {
+  id                String   @id @default(uuid())
+  filmId            String
+
+  title             String
+  slug              String?
+  startSeconds      Int
+  endSeconds        Int?
+  orderIndex        Int
+
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  film              Film     @relation(fields: [filmId], references: [id], onDelete: Cascade)
+
+  @@index([filmId, orderIndex])
+  @@map("film_chapters")
+}
+
+model FilmVariant {
+  id                String   @id @default(uuid())
+  filmId            String
+
+  name              String
+  qualityLabel      String
+  codec             String?
+  container         String?
+  storageKey        String
+  manifestUrl       String?
+  bitrateKbps       Int?
+  width             Int?
+  height            Int?
+  fps               Float?
+  durationSeconds   Int?
+
+  isDefault         Boolean  @default(false)
+  isReady           Boolean  @default(false)
+  metadata          Json     @default("{}")
+
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  film              Film     @relation(fields: [filmId], references: [id], onDelete: Cascade)
+
+  @@index([filmId, qualityLabel])
+  @@index([filmId, isDefault])
+  @@map("film_variants")
+}
+
+model Genre {
+  id          String   @id @default(uuid())
+  tenantId    String
+  name        String
+  slug        String
+  description String?
+  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  metadata    Json     @default("{}")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  filmGenres  FilmGenre[]
+
+  @@unique([tenantId, slug])
+  @@index([tenantId, isActive])
+  @@map("genres")
+}
+
+model FilmGenre {
+  filmId   String
+  genreId  String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  film     Film   @relation(fields: [filmId], references: [id], onDelete: Cascade)
+  genre    Genre  @relation(fields: [genreId], references: [id], onDelete: Cascade)
+
+  @@id([filmId, genreId])
+  @@index([genreId])
+  @@map("film_genres")
+}
+
+model Bundle {
+  id          String   @id @default(uuid())
+  tenantId    String
+  name        String
+  slug        String
+  description String?
+  status      String   @default("draft")
+  price       Decimal? @db.Decimal(10, 2)
+  currency    String   @default("USD")
+  metadata    Json     @default("{}")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  items       FilmBundleItem[]
+
+  @@unique([tenantId, slug])
+  @@index([tenantId, status])
+  @@map("bundles")
+}
+
+model FilmBundleItem {
+  id        String   @id @default(uuid())
+  bundleId  String
+  filmId    String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  bundle    Bundle   @relation(fields: [bundleId], references: [id], onDelete: Cascade)
+  film      Film     @relation(fields: [filmId], references: [id], onDelete: Cascade)
+
+  @@unique([bundleId, filmId])
+  @@index([filmId])
+  @@map("film_bundle_items")
+}
+
+model WatchlistItem {
+  id          String   @id @default(uuid())
+  tenantId    String
+  viewerUserId String
+  filmId      String
+  notes       String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  film        Film     @relation(fields: [filmId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, viewerUserId, filmId])
+  @@index([tenantId, viewerUserId])
+  @@index([filmId])
+  @@map("watchlist_items")
+}
+
+model FilmRating {
+  id           String   @id @default(uuid())
+  tenantId     String
+  viewerUserId String
+  filmId       String
+  rating       Int
+  reviewTitle  String?
+  reviewBody   String?
+  isPublished  Boolean  @default(false)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  film         Film     @relation(fields: [filmId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, viewerUserId, filmId])
+  @@index([filmId, isPublished])
+  @@map("film_ratings")
+}
