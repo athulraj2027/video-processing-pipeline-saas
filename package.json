@@ -19,6 +19,9 @@
     "catalog:dev": "npm run dev -w services/catalog-service",
     "catalog:build": "npm run build -w services/catalog-service",
     "catalog:start": "npm run start -w services/catalog-service",
+    "upload:dev": "npm run dev -w services/upload-service",
+    "upload:build": "npm run build -w services/upload-service",
+    "upload:start": "npm run start -w services/upload-service",
     "libs:build": "npm run build -w libs/auth-middleware"
   }
 }

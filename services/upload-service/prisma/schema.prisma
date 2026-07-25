@@ -1,0 +1,225 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/client"
+}
+
+enum UploadStatus {
+  CREATED
+  VALIDATING
+  VALIDATED
+  QUEUED
+  UPLOADING
+  UPLOADED
+  PROCESSING
+  READY_FOR_TRANSCODE
+  COMPLETED
+  FAILED
+  CANCELED
+}
+
+enum UploadSourceType {
+  DIRECT
+  RESUMABLE
+  S3_IMPORT
+  URL_IMPORT
+  MIGRATED
+}
+
+enum UploadValidationStatus {
+  PENDING
+  PASSED
+  FAILED
+  WARNING
+}
+
+enum UploadValidationCode {
+  FILE_TOO_SMALL
+  FILE_TOO_LARGE
+  INVALID_CONTAINER
+  UNSUPPORTED_CODEC
+  BAD_DURATION
+  BAD_BITRATE
+  BAD_RESOLUTION
+  CORRUPTED_FILE
+  MISSING_AUDIO
+  MISSING_VIDEO
+  FILE_HASH_MISMATCH
+  VIRUS_SCAN_FAILED
+  UNKNOWN
+}
+
+enum StorageProvider {
+  R2
+  S3
+  LOCAL
+  GCS
+}
+
+enum UploadJobKind {
+  FILE_CHECK
+  METADATA_CHECK
+  MEDIA_PROBE
+  VIRUS_SCAN
+  CHECKSUM_VERIFY
+  OBJECT_STORE_WRITE
+  PIPELINE_ENQUEUE
+}
+
+model Tenant {
+  id    String      @id
+  jobs  UploadJob[]
+
+  @@map("tenants")
+}
+
+model Film {
+  id    String      @id
+  jobs  UploadJob[]
+
+  @@map("films")
+}
+
+model UploadJob {
+  id                String            @id @default(uuid())
+  tenantId          String
+  filmId            String?
+
+  sourceType        UploadSourceType   @default(DIRECT)
+  status            UploadStatus       @default(CREATED)
+
+  originalFileName  String
+  contentType       String?
+  fileSizeBytes     BigInt?
+  checksumSha256    String?
+  checksumMd5      String?
+  durationSeconds   Int?
+  width             Int?
+  height            Int?
+  bitrateKbps       Int?
+  fps               Float?
+  codecVideo       String?
+  codecAudio       String?
+  containerFormat   String?
+
+  storageProvider   StorageProvider    @default(R2)
+  storageBucket     String?
+  storageKey        String?
+  storageRegion     String?
+  uploadUrl         String?
+  uploadExpiresAt   DateTime?
+  uploadedAt        DateTime?
+  completedAt       DateTime?
+  failedAt          DateTime?
+  canceledAt       DateTime?
+
+  validationStatus  UploadValidationStatus @default(PENDING)
+  validationSummary Json              @default("{}")
+  validationReport  Json              @default("[]")
+  probeData         Json              @default("{}")
+  errorMessage      String?
+  errorCode         String?
+  retryCount       Int               @default(0)
+  maxRetries       Int               @default(3)
+
+  createdById      String?
+  updatedById      String?
+
+  createdAt        DateTime          @default(now()) @map("created_at")
+  updatedAt        DateTime          @updatedAt @map("updated_at")
+
+  tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  film             Film?             @relation(fields: [filmId], references: [id], onDelete: SetNull)
+
+  parts            UploadPart[]
+  validations     UploadValidation[]
+  events          UploadEvent[]
+  artifacts       UploadArtifact[]
+
+  @@index([tenantId, status])
+  @@index([tenantId, validationStatus])
+  @@index([tenantId, filmId])
+  @@index([storageKey])
+  @@map("upload_jobs")
+}
+
+model UploadPart {
+  id              String   @id @default(uuid())
+  uploadJobId     String
+  partNumber      Int
+  byteStart       BigInt?
+  byteEnd         BigInt?
+  fileSizeBytes   BigInt?
+  etag            String?
+  checksumSha256  String?
+  uploadedAt      DateTime?
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  uploadJob       UploadJob @relation(fields: [uploadJobId], references: [id], onDelete: Cascade)
+
+  @@unique([uploadJobId, partNumber])
+  @@index([uploadJobId])
+  @@map("upload_parts")
+}
+
+model UploadValidation {
+  id              String                 @id @default(uuid())
+  uploadJobId     String
+  code            UploadValidationCode
+  status          UploadValidationStatus  @default(PENDING)
+  severity        String                  @default("error")
+  message         String
+  details         Json                    @default("{}")
+  fieldName       String?
+  expectedValue   String?
+  actualValue     String?
+  createdAt       DateTime                @default(now()) @map("created_at")
+  updatedAt       DateTime                @updatedAt @map("updated_at")
+
+  uploadJob       UploadJob               @relation(fields: [uploadJobId], references: [id], onDelete: Cascade)
+
+  @@index([uploadJobId, status])
+  @@index([uploadJobId, code])
+  @@map("upload_validations")
+}
+
+model UploadEvent {
+  id              String   @id @default(uuid())
+  uploadJobId     String
+  eventType       String
+  payload         Json     @default("{}")
+  occurredAt      DateTime @default(now())
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  uploadJob       UploadJob @relation(fields: [uploadJobId], references: [id], onDelete: Cascade)
+
+  @@index([uploadJobId, eventType])
+  @@index([uploadJobId, occurredAt])
+  @@map("upload_events")
+}
+
+model UploadArtifact {
+  id              String   @id @default(uuid())
+  uploadJobId     String
+  kind            String
+  name            String
+  storageProvider StorageProvider @default(R2)
+  storageKey      String
+  url             String?
+  mimeType        String?
+  sizeBytes       BigInt?
+  metadata        Json     @default("{}")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  uploadJob       UploadJob @relation(fields: [uploadJobId], references: [id], onDelete: Cascade)
+
+  @@index([uploadJobId, kind])
+  @@index([storageKey])
+  @@map("upload_artifacts")
+}
