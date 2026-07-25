@@ -1,0 +1,59 @@
+{
+  "users": [
+    {
+      "id": "8e8f10a8-1966-41fe-855c-f4eba75d1c15",
+      "email": "test-1784953912274@example.com",
+      "passwordHash": "$2a$10$udcbxdeDQ3qF93vICXbaOuqIJuiuUGtNNmLPGQn7KDQlkcZY5qR4y",
+      "role": "tenant_admin",
+      "tenantId": "tenant_abc",
+      "createdAt": "2026-07-25T04:31:52.513Z",
+      "updatedAt": "2026-07-25T04:31:52.513Z"
+    },
+    {
+      "id": "586f9d9a-6976-44bc-9633-328584070ac3",
+      "email": "test-1784954096827@example.com",
+      "passwordHash": "$2a$10$GKUP4BVLmB7yGjMo3QLmEeungy9tjJhSD6AUq6dxfmZf6mbbUz3L.",
+      "role": "tenant_admin",
+      "tenantId": "tenant_abc",
+      "createdAt": "2026-07-25T04:34:57.105Z",
+      "updatedAt": "2026-07-25T04:34:57.105Z"
+    },
+    {
+      "id": "816b73ef-c67e-40e3-9470-84afcba835b9",
+      "email": "test-1784954219474@example.com",
+      "passwordHash": "$2a$10$ZeBG4umeRME/3.FglYuB9O9c5bZ6V75huYeGnnX0W9D0mjGhtom8G",
+      "role": "tenant_admin",
+      "tenantId": "tenant_abc",
+      "createdAt": "2026-07-25T04:36:59.707Z",
+      "updatedAt": "2026-07-25T04:36:59.707Z"
+    },
+    {
+      "id": "e9589eeb-8192-4f02-b96b-cfe1e3b5e543",
+      "email": "test-1784954480178@example.com",
+      "passwordHash": "$2a$10$dIWrljOpWTo7uJGNwfOal.6JoTNaNlE8NuLsCu8Mp0.PgYYycHC6G",
+      "role": "tenant_admin",
+      "tenantId": "tenant_abc",
+      "createdAt": "2026-07-25T04:41:20.402Z",
+      "updatedAt": "2026-07-25T04:41:20.402Z"
+    },
+    {
+      "id": "6ab6434a-9327-4d06-a3f0-e380d1ac64e7",
+      "email": "test-1784954721393@example.com",
+      "passwordHash": "$2a$10$YMzWbDlclvGYJWIAP9OJ6eSkKg0UpsuTshk4WZqiI32wMw74pN/Ra",
+      "role": "tenant_admin",
+      "tenantId": "tenant_abc",
+      "createdAt": "2026-07-25T04:45:21.623Z",
+      "updatedAt": "2026-07-25T04:45:21.623Z"
+    },
+    {
+      "id": "87960f3a-bf1c-4974-b5f6-96ab03703f36",
+      "email": "test-1784954887684@example.com",
+      "passwordHash": "$2a$10$hkJBcnPW.Uflq7N07Wusa.vC0Xk2Rcb987KcD2HrFpGaddFvg67R6",
+      "role": "tenant_admin",
+      "tenantId": "tenant_abc",
+      "createdAt": "2026-07-25T04:48:07.988Z",
+      "updatedAt": "2026-07-25T04:48:07.988Z"
+    }
+  ],
+  "refreshTokens": []
+}
