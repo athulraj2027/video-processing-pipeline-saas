@@ -1,0 +1,14 @@
+{
+  "name": "saas-vod-platform",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "services/*",
+    "apps/*",
+    "libs/*"
+  ],
+  "scripts": {
+    "gateway:dev": "npm run dev -w services/api-gateway",
+    "gateway:build": "npm run build -w services/api-gateway"
+  }
+}
