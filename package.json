@@ -13,6 +13,9 @@
     "identity:dev": "npm run dev -w services/identity-service",
     "identity:build": "npm run build -w services/identity-service",
     "identity:start": "npm run start -w services/identity-service",
+    "tenant:dev": "npm run dev -w services/tenant-service",
+    "tenant:build": "npm run build -w services/tenant-service",
+    "tenant:start": "npm run start -w services/tenant-service",
     "libs:build": "npm run build -w libs/auth-middleware"
   }
 }
