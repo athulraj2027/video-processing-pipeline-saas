@@ -1,12 +1,12 @@
-import { Options } from "http-proxy-middleware";
+import { Options, fixRequestBody } from "http-proxy-middleware";
 
-export const buildProxyOptions = (targetUrl: string): Options => {
+export const buildProxyOptions = (targetUrl: string, prefix?: string): Options => {
     return {
         target: targetUrl,
         changeOrigin: true,
-        pathRewrite: {
-            // Ensure path is preserved as is
-        },
+        pathRewrite: prefix ? {
+            '^/': prefix.endsWith('/') ? prefix : `${prefix}/`
+        } : {},
         on: {
             proxyReq: (proxyReq, req: any) => {
                 // 1. Forward the dynamically resolved Tenant ID
@@ -24,6 +24,9 @@ export const buildProxyOptions = (targetUrl: string): Options => {
                 if (req.headers['x-user-email']) {
                     proxyReq.setHeader('x-user-email', req.headers['x-user-email'] as string);
                 }
+
+                // 3. Re-stream body since Express body-parser (express.json()) consumed the stream
+                fixRequestBody(proxyReq, req);
             },
             error: (err, req, res: any) => {
                 console.error('Proxy Error:', err);

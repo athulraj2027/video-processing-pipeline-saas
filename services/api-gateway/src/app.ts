@@ -8,7 +8,7 @@ import healthRouter from './routes/health.js';
 export const app = createExpressApp()
 
 app.use(corsMiddleware)
-app.use(healthRouter)
 app.use(tenantResolver);
+app.use(healthRouter)
 app.use(tenantRateLimiter);
 app.use(proxyRouter);

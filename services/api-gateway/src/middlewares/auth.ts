@@ -14,8 +14,17 @@ function extractToken(req: Request): string | null {
   return null;
 }
 
+// Sanitize user context headers to prevent spoofing
+function sanitizeHeaders(req: Request) {
+  delete req.headers['x-user-id'];
+  delete req.headers['x-user-role'];
+  delete req.headers['x-user-email'];
+  delete req.headers['x-tenant-id'];
+}
+
 // Strict Auth: Blocks and returns 401 if token is missing or invalid
 export function authenticate(req: Request, res: Response, next: NextFunction) {
+  sanitizeHeaders(req);
   const token = extractToken(req);
 
   if (!token) {
@@ -46,6 +55,7 @@ export function authenticate(req: Request, res: Response, next: NextFunction) {
 
 // Optional Auth: Decodes token if present, lets guest pass if missing
 export function optionalAuthenticate(req: Request, res: Response, next: NextFunction) {
+  sanitizeHeaders(req);
   const token = extractToken(req);
 
   if (!token) {

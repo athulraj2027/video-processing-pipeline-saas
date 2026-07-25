@@ -1,25 +1,22 @@
 import { app } from './app.js';
 import { env } from './config/env.js';
-import { init, pool, isPostgres } from './config/db.js';
+import { init, prisma } from './config/db.js';
 import { createAndStartServer } from './config/httpServer.js';
 import { registerCleanupTask } from './config/globalShutdown.js';
 
 async function start() {
   try {
     // 1. Initialize Database
-    console.log('🔄 Initializing database tables...');
     await init();
 
     // 2. Register Database Cleanup Task
     registerCleanupTask(async () => {
-      if (isPostgres && pool) {
-        try {
-          console.log('🔌 Closing PostgreSQL pool connections...');
-          await pool.end();
-          console.log('Database connections closed.');
-        } catch (err) {
-          console.error('Error closing database pool:', err);
-        }
+      try {
+        console.log('🔌 Disconnecting Prisma database client...');
+        await prisma.$disconnect();
+        console.log('Database connections closed.');
+      } catch (err) {
+        console.error('Error disconnecting database client:', err);
       }
     });
 
