@@ -13,9 +13,33 @@ export const signup = catchAsync(async (req: Request, res: Response) => {
     tenantId,
   });
 
+  res.json({
+    message: 'Verification OTP sent to your email',
+    ...result,
+  });
+});
+
+export const verifyEmail = catchAsync(async (req: Request, res: Response) => {
+  const { email, otp } = req.body;
+
+  const result = await authService.verifyEmail({
+    email,
+    otp,
+  });
+
+  // Set refresh token in HttpOnly cookie on successful verification login
+  res.cookie('refreshToken', result.refreshToken, {
+    httpOnly: true,
+    secure: env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    expires: result.expiresAt,
+  });
+
   res.status(201).json({
-    message: 'User registered successfully',
-    user: result,
+    message: 'Email verified and login successful',
+    accessToken: result.accessToken,
+    refreshToken: result.refreshToken,
+    user: result.user,
   });
 });
 
