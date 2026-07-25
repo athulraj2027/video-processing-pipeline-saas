@@ -9,7 +9,6 @@ app.use(corsMiddleware);
 app.use(cookieParser);
 app.use('/api/v1/auth', authRouter);
 app.use(notFoundError);
-
 app.use(errorHandler);
 
 export default app;

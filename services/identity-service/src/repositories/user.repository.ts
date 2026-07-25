@@ -1,99 +1,65 @@
-import fs from 'fs';
-import { isPostgres, pool, getJsonDbPath } from '../config/db.js';
+import { prisma } from '../config/db.js';
 import type { User, IUserRepository } from '../interfaces/index.js';
 
-class PostgresUserRepository implements IUserRepository {
+class PrismaUserRepository implements IUserRepository {
   async createUser(user: Omit<User, 'createdAt' | 'updatedAt'>): Promise<User> {
-    const query = `
-      INSERT INTO users (id, email, password_hash, role, tenant_id)
-      VALUES ($1, $2, $3, $4, $5)
-      RETURNING id, email, password_hash as "passwordHash", role, tenant_id as "tenantId", created_at as "createdAt", updated_at as "updatedAt"
-    `;
-    const res = await pool!.query(query, [user.id, user.email.toLowerCase(), user.passwordHash, user.role, user.tenantId || null]);
-    return res.rows[0];
-  }
+    const created = await prisma.user.create({
+      data: {
+        id: user.id,
+        email: user.email.toLowerCase(),
+        passwordHash: user.passwordHash,
+        role: user.role,
+        tenantId: user.tenantId ?? null,
+      },
+    });
 
-  async getUserByEmail(email: string): Promise<User | null> {
-    const query = `
-      SELECT id, email, password_hash as "passwordHash", role, tenant_id as "tenantId", created_at as "createdAt", updated_at as "updatedAt"
-      FROM users
-      WHERE LOWER(email) = $1
-    `;
-    const res = await pool!.query(query, [email.toLowerCase()]);
-    if (res.rows.length === 0) return null;
-    return res.rows[0];
-  }
-
-  async getUserById(id: string): Promise<User | null> {
-    const query = `
-      SELECT id, email, password_hash as "passwordHash", role, tenant_id as "tenantId", created_at as "createdAt", updated_at as "updatedAt"
-      FROM users
-      WHERE id = $1
-    `;
-    const res = await pool!.query(query, [id]);
-    if (res.rows.length === 0) return null;
-    return res.rows[0];
-  }
-}
-
-interface JsonSchema {
-  users: User[];
-  refreshTokens: any[];
-}
-
-class JsonUserRepository implements IUserRepository {
-  private getFilePath(): string {
-    return getJsonDbPath();
-  }
-
-  private read(): JsonSchema {
-    const raw = fs.readFileSync(this.getFilePath(), 'utf-8');
-    const data = JSON.parse(raw);
-    data.users = data.users.map((u: any) => ({
-      ...u,
-      createdAt: new Date(u.createdAt),
-      updatedAt: new Date(u.updatedAt),
-    }));
-    return data;
-  }
-
-  private write(data: JsonSchema): void {
-    fs.writeFileSync(this.getFilePath(), JSON.stringify(data, null, 2), 'utf-8');
-  }
-
-  async createUser(user: Omit<User, 'createdAt' | 'updatedAt'>): Promise<User> {
-    const data = this.read();
-    const exists = data.users.some(u => u.email.toLowerCase() === user.email.toLowerCase());
-    if (exists) {
-      throw new Error('Email already exists');
-    }
-
-    const newUser: User = {
-      ...user,
-      email: user.email.toLowerCase(),
-      createdAt: new Date(),
-      updatedAt: new Date(),
+    return {
+      id: created.id,
+      email: created.email,
+      passwordHash: created.passwordHash,
+      role: created.role,
+      tenantId: created.tenantId ?? undefined,
+      createdAt: created.createdAt,
+      updatedAt: created.updatedAt,
     };
-
-    data.users.push(newUser);
-    this.write(data);
-    return newUser;
   }
 
   async getUserByEmail(email: string): Promise<User | null> {
-    const data = this.read();
-    const user = data.users.find(u => u.email.toLowerCase() === email.toLowerCase());
-    return user || null;
+    const found = await prisma.user.findUnique({
+      where: { email: email.toLowerCase() },
+    });
+
+    if (!found) return null;
+
+    return {
+      id: found.id,
+      email: found.email,
+      passwordHash: found.passwordHash,
+      role: found.role,
+      tenantId: found.tenantId ?? undefined,
+      createdAt: found.createdAt,
+      updatedAt: found.updatedAt,
+    };
   }
 
   async getUserById(id: string): Promise<User | null> {
-    const data = this.read();
-    const user = data.users.find(u => u.id === id);
-    return user || null;
+    const found = await prisma.user.findUnique({
+      where: { id },
+    });
+
+    if (!found) return null;
+
+    return {
+      id: found.id,
+      email: found.email,
+      passwordHash: found.passwordHash,
+      role: found.role,
+      tenantId: found.tenantId ?? undefined,
+      createdAt: found.createdAt,
+      updatedAt: found.updatedAt,
+    };
   }
 }
 
-export const userRepository: IUserRepository = isPostgres 
-  ? new PostgresUserRepository() 
-  : new JsonUserRepository();
+export const userRepository: IUserRepository = new PrismaUserRepository();
 export default userRepository;
