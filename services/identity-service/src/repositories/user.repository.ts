@@ -59,6 +59,23 @@ class PrismaUserRepository implements IUserRepository {
       updatedAt: found.updatedAt,
     };
   }
+
+  async updateUserPassword(id: string, passwordHash: string): Promise<User> {
+    const updated = await prisma.user.update({
+      where: { id },
+      data: { passwordHash },
+    });
+
+    return {
+      id: updated.id,
+      email: updated.email,
+      passwordHash: updated.passwordHash,
+      role: updated.role,
+      tenantId: updated.tenantId ?? undefined,
+      createdAt: updated.createdAt,
+      updatedAt: updated.updatedAt,
+    };
+  }
 }
 
 export const userRepository: IUserRepository = new PrismaUserRepository();

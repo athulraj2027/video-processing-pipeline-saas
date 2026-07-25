@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
-import { env } from '../config/env.js';
 import authService from '../services/auth.service.js';
 import catchAsync from '../utils/catchAsync.js';
+import { setRefreshTokenCookie } from '../utils/cookie.js';
 
 export const signup = catchAsync(async (req: Request, res: Response) => {
   const { email, password, role, tenantId } = req.body;
@@ -28,12 +28,7 @@ export const verifyEmail = catchAsync(async (req: Request, res: Response) => {
   });
 
   // Set refresh token in HttpOnly cookie on successful verification login
-  res.cookie('refreshToken', result.refreshToken, {
-    httpOnly: true,
-    secure: env.NODE_ENV === 'production',
-    sameSite: 'strict',
-    expires: result.expiresAt,
-  });
+  setRefreshTokenCookie(res, result.refreshToken, result.expiresAt);
 
   res.status(201).json({
     message: 'Email verified and login successful',
@@ -52,12 +47,7 @@ export const login = catchAsync(async (req: Request, res: Response) => {
   });
 
   // Set refresh token in HttpOnly cookie
-  res.cookie('refreshToken', result.refreshToken, {
-    httpOnly: true,
-    secure: env.NODE_ENV === 'production',
-    sameSite: 'strict',
-    expires: result.expiresAt,
-  });
+  setRefreshTokenCookie(res, result.refreshToken, result.expiresAt);
 
   res.json({
     message: 'Login successful',
@@ -73,17 +63,35 @@ export const refresh = catchAsync(async (req: Request, res: Response) => {
   const result = await authService.refresh(oldTokenString);
 
   // Update refresh token cookie
-  res.cookie('refreshToken', result.refreshToken, {
-    httpOnly: true,
-    secure: env.NODE_ENV === 'production',
-    sameSite: 'strict',
-    expires: result.expiresAt,
-  });
+  setRefreshTokenCookie(res, result.refreshToken, result.expiresAt);
 
   res.json({
     accessToken: result.accessToken,
     refreshToken: result.refreshToken,
   });
+});
+
+export const forgotPassword = catchAsync(async (req: Request, res: Response) => {
+  const { email } = req.body;
+
+  const result = await authService.forgotPassword(email);
+
+  res.json({
+    message: 'Password reset OTP sent to your email',
+    ...result,
+  });
+});
+
+export const resetPassword = catchAsync(async (req: Request, res: Response) => {
+  const { email, otp, password } = req.body;
+
+  const result = await authService.resetPassword({
+    email,
+    otp,
+    passwordHash: password,
+  });
+
+  res.json(result);
 });
 
 export const logout = catchAsync(async (req: Request, res: Response) => {

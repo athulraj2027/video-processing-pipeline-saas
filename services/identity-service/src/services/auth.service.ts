@@ -47,6 +47,7 @@ export class AuthService {
     await this.otpRepo.createOrUpdateOtp({
       email: data.email,
       otp: otpCode,
+      type: 'VERIFY_EMAIL',
       passwordHash: hashedPassword,
       role: data.role,
       tenantId: data.tenantId,
@@ -98,14 +99,14 @@ export class AuthService {
 
   async verifyEmail(data: { email: string; otp: string }) {
     // Look up OTP code record
-    const otpRecord = await this.otpRepo.getOtpByEmail(data.email);
+    const otpRecord = await this.otpRepo.getOtpByEmailAndType(data.email, 'VERIFY_EMAIL');
     if (!otpRecord) {
       throw new NotFoundError('Verification code not found or expired');
     }
 
     // Validate expiration
     if (otpRecord.expiresAt < new Date()) {
-      await this.otpRepo.deleteOtpByEmail(data.email);
+      await this.otpRepo.deleteOtpByEmailAndType(data.email, 'VERIFY_EMAIL');
       throw new UnauthorizedError('Verification code has expired');
     }
 
@@ -119,16 +120,83 @@ export class AuthService {
     const newUser = await this.userRepo.createUser({
       id: userId,
       email: otpRecord.email,
-      passwordHash: otpRecord.passwordHash,
-      role: otpRecord.role,
+      passwordHash: otpRecord.passwordHash!,
+      role: otpRecord.role!,
       tenantId: otpRecord.tenantId,
     });
 
     // Clear verification session
-    await this.otpRepo.deleteOtpByEmail(data.email);
+    await this.otpRepo.deleteOtpByEmailAndType(data.email, 'VERIFY_EMAIL');
 
     // Auto-login upon successful verification
     return this.generateTokensForUser(newUser);
+  }
+
+  async forgotPassword(email: string) {
+    // Check user existence
+    const user = await this.userRepo.getUserByEmail(email);
+    if (!user) {
+      throw new NotFoundError('User with this email address does not exist');
+    }
+
+    // Generate 6-digit random code
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 mins expiry
+
+    // Save/update RESET_PASSWORD OTP
+    await this.otpRepo.createOrUpdateOtp({
+      email,
+      otp: otpCode,
+      type: 'RESET_PASSWORD',
+      expiresAt,
+    });
+
+    // Send mock email
+    await this.emailService.sendResetPasswordOtp(email, otpCode);
+
+    return {
+      email: email.toLowerCase(),
+      // Return code in test/dev environments so integration test runs can fetch it
+      ...(env.NODE_ENV !== 'production' && { _testOtp: otpCode }),
+    };
+  }
+
+  async resetPassword(data: { email: string; otp: string; passwordHash: string }) {
+    // Look up OTP code record
+    const otpRecord = await this.otpRepo.getOtpByEmailAndType(data.email, 'RESET_PASSWORD');
+    if (!otpRecord) {
+      throw new NotFoundError('Reset code not found or expired');
+    }
+
+    // Validate expiration
+    if (otpRecord.expiresAt < new Date()) {
+      await this.otpRepo.deleteOtpByEmailAndType(data.email, 'RESET_PASSWORD');
+      throw new UnauthorizedError('Reset code has expired');
+    }
+
+    // Match code
+    if (otpRecord.otp !== data.otp) {
+      throw new UnauthorizedError('Invalid reset code');
+    }
+
+    // Lookup permanent user
+    const user = await this.userRepo.getUserByEmail(data.email);
+    if (!user) {
+      throw new NotFoundError('User associated with reset request not found');
+    }
+
+    // Hash the new password
+    const hashedPassword = await bcryptjs.hash(data.passwordHash, 10);
+
+    // Update user's password
+    await this.userRepo.updateUserPassword(user.id, hashedPassword);
+
+    // Clear verification session
+    await this.otpRepo.deleteOtpByEmailAndType(data.email, 'RESET_PASSWORD');
+
+    return {
+      message: 'Password has been reset successfully',
+    };
   }
 
   async login(data: { email: string; passwordHash: string }) {
