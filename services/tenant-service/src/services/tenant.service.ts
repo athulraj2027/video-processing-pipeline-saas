@@ -1,31 +1,41 @@
 import { tenantRepository, CreateTenantInput } from '../repositories/tenant.repository.js';
+import { domainRepository } from '../repositories/domain.repository.js';
+import { auditRepository } from '../repositories/audit.repository.js';
+import { prisma } from '../config/db.js';
 import { ConflictError, NotFoundError, BadRequestError } from '../errors/appError.js';
 
 export class TenantService {
   private repo = tenantRepository;
+  private domainRepo = domainRepository;
+  private auditRepo = auditRepository;
 
   async createTenant(data: CreateTenantInput) {
-    // Validate slug uniqueness
-    const existingSlug = await this.repo.getTenantBySlug(data.slug.toLowerCase());
+    const slugLower = data.slug.toLowerCase();
+
+    const existingSlug = await this.repo.getTenantBySlug(slugLower);
     if (existingSlug) {
       throw new ConflictError(`Tenant with slug '${data.slug}' already exists`);
     }
 
-    // Validate subdomain uniqueness if provided
-    if (data.subdomain) {
-      const existingSub = await this.repo.getTenantBySubdomain(data.subdomain.toLowerCase());
+    if (data.primarySubdomain) {
+      const subLower = data.primarySubdomain.toLowerCase();
+      const existingSub = await this.repo.getTenantBySubdomain(subLower);
       if (existingSub) {
-        throw new ConflictError(`Tenant with subdomain '${data.subdomain}' already exists`);
+        throw new ConflictError(`Tenant with subdomain '${data.primarySubdomain}' already exists`);
       }
     }
 
-    // Validate customDomain uniqueness if provided
     if (data.customDomain) {
-      const existingDomain = await this.repo.getTenantByCustomDomain(data.customDomain.toLowerCase());
-      if (existingDomain) {
+      const domLower = data.customDomain.toLowerCase();
+      const existingDom = await this.repo.getTenantByCustomDomain(domLower);
+      if (existingDom) {
         throw new ConflictError(`Tenant with custom domain '${data.customDomain}' already exists`);
       }
     }
+
+    const status = data.status || 'ONBOARDING';
+    const planType = data.planType || 'STARTER';
+    const billingStatus = data.billingStatus || 'TRIALING';
 
     const branding = {
       logoUrl: data.branding?.logoUrl || null,
@@ -38,27 +48,57 @@ export class TenantService {
     };
 
     const settings = {
-      billingPlan: data.settings?.billingPlan || 'starter',
-      maxStorageBytes: data.settings?.maxStorageBytes || 53687091200, // 50 GB
-      maxBandwidthBytes: data.settings?.maxBandwidthBytes || 107374182400, // 100 GB
-      stripeCustomerId: data.settings?.stripeCustomerId || null,
-      stripeAccountId: data.settings?.stripeAccountId || null,
-      features: {
-        drmEnabled: data.settings?.features?.drmEnabled || false,
-        geoRestrictionsEnabled: data.settings?.features?.geoRestrictionsEnabled || false,
-        subtitlesEnabled: data.settings?.features?.subtitlesEnabled || true,
-        ...(data.settings?.features || {}),
-      },
+      stripeCustomerId: data.stripeCustomerId || null,
+      stripeConnectAcctId: data.stripeConnectAcctId || null,
+      billingEmail: data.billingEmail || data.supportEmail || null,
+      supportEmail: data.supportEmail || null,
+      ...(data.settings || {}),
     };
 
-    return this.repo.createTenant({
+    const limits = {
+      maxStorageBytes: data.limits?.maxStorageBytes || 53687091200,
+      maxBandwidthBytes: data.limits?.maxBandwidthBytes || 107374182400,
+      maxUsers: data.limits?.maxUsers || 5,
+      ...(data.limits || {}),
+    };
+
+    const features = {
+      drmEnabled: data.features?.drmEnabled || false,
+      geoRestrictionsEnabled: data.features?.geoRestrictionsEnabled || false,
+      subtitlesEnabled: data.features?.subtitlesEnabled || true,
+      ...(data.features || {}),
+    };
+
+    const tenant = await this.repo.createTenant({
       ...data,
-      slug: data.slug.toLowerCase(),
-      subdomain: data.subdomain?.toLowerCase(),
+      slug: slugLower,
+      primarySubdomain: data.primarySubdomain?.toLowerCase(),
+      primaryDomain: data.primaryDomain?.toLowerCase(),
       customDomain: data.customDomain?.toLowerCase(),
+      status,
+      planType,
+      billingStatus,
       branding,
       settings,
+      limits,
+      features,
     });
+
+    if (tenant.primarySubdomain) {
+      await this.domainRepo.addDomain(tenant.id, `${tenant.primarySubdomain}.localhost`, 'SUBDOMAIN');
+      await this.domainRepo.addDomain(tenant.id, `${tenant.primarySubdomain}.localhost:3000`, 'SUBDOMAIN');
+    }
+
+    await this.auditRepo.createAuditLog({
+      tenantId: tenant.id,
+      actorUserId: data.createdById,
+      action: 'TENANT_CREATE',
+      entityType: 'Tenant',
+      entityId: tenant.id,
+      after: tenant,
+    });
+
+    return tenant;
   }
 
   async getTenantById(id: string) {
@@ -71,8 +111,8 @@ export class TenantService {
 
   async updateTenant(id: string, data: any) {
     const tenant = await this.getTenantById(id);
+    const before = { ...tenant };
 
-    // Validate slug uniqueness if updated
     if (data.slug && data.slug.toLowerCase() !== tenant.slug) {
       const existing = await this.repo.getTenantBySlug(data.slug.toLowerCase());
       if (existing) {
@@ -81,16 +121,14 @@ export class TenantService {
       data.slug = data.slug.toLowerCase();
     }
 
-    // Validate subdomain uniqueness if updated
-    if (data.subdomain && data.subdomain.toLowerCase() !== tenant.subdomain) {
-      const existing = await this.repo.getTenantBySubdomain(data.subdomain.toLowerCase());
+    if (data.primarySubdomain && data.primarySubdomain.toLowerCase() !== tenant.primarySubdomain) {
+      const existing = await this.repo.getTenantBySubdomain(data.primarySubdomain.toLowerCase());
       if (existing) {
-        throw new ConflictError(`Tenant with subdomain '${data.subdomain}' already exists`);
+        throw new ConflictError(`Tenant with subdomain '${data.primarySubdomain}' already exists`);
       }
-      data.subdomain = data.subdomain.toLowerCase();
+      data.primarySubdomain = data.primarySubdomain.toLowerCase();
     }
 
-    // Validate customDomain uniqueness if updated
     if (data.customDomain && data.customDomain.toLowerCase() !== tenant.customDomain) {
       const existing = await this.repo.getTenantByCustomDomain(data.customDomain.toLowerCase());
       if (existing) {
@@ -99,45 +137,68 @@ export class TenantService {
       data.customDomain = data.customDomain.toLowerCase();
     }
 
-    return this.repo.updateTenant(id, data);
+    const updated = await this.repo.updateTenant(id, data);
+
+    await this.auditRepo.createAuditLog({
+      tenantId: id,
+      action: 'TENANT_UPDATE',
+      entityType: 'Tenant',
+      entityId: id,
+      before,
+      after: updated,
+    });
+
+    return updated;
   }
 
   async updateBranding(id: string, brandingUpdates: any) {
     const tenant = await this.getTenantById(id);
-    const existingBranding = (tenant.branding as any) || {};
-
     const updatedBranding = {
-      ...existingBranding,
+      ...(tenant.branding as any || {}),
       ...brandingUpdates,
     };
-
-    return this.repo.updateTenant(id, { branding: updatedBranding });
+    return this.updateTenant(id, { branding: updatedBranding });
   }
 
   async updateSettings(id: string, settingsUpdates: any) {
     const tenant = await this.getTenantById(id);
-    const existingSettings = (tenant.settings as any) || {};
-
     const updatedSettings = {
-      ...existingSettings,
+      ...(tenant.settings as any || {}),
       ...settingsUpdates,
-      features: {
-        ...(existingSettings.features || {}),
-        ...(settingsUpdates.features || {}),
-      },
     };
-
-    return this.repo.updateTenant(id, { settings: updatedSettings });
+    return this.updateTenant(id, { settings: updatedSettings });
   }
 
-  async updateStatus(id: string, status: string) {
-    const validStatuses = ['onboarding', 'active', 'suspended', 'deleted'];
-    if (!validStatuses.includes(status)) {
-      throw new BadRequestError(`Invalid status '${status}'. Allowed values: ${validStatuses.join(', ')}`);
+  async updateLimits(id: string, limitsUpdates: any) {
+    const tenant = await this.getTenantById(id);
+    const updatedLimits = {
+      ...(tenant.limits as any || {}),
+      ...limitsUpdates,
+    };
+    return this.updateTenant(id, { limits: updatedLimits });
+  }
+
+  async updateFeatures(id: string, featuresUpdates: any) {
+    const tenant = await this.getTenantById(id);
+    const updatedFeatures = {
+      ...(tenant.features as any || {}),
+      ...featuresUpdates,
+    };
+    return this.updateTenant(id, { features: updatedFeatures });
+  }
+
+  async updateStatus(id: string, status: 'ONBOARDING' | 'ACTIVE' | 'SUSPENDED' | 'DELETED') {
+    const data: any = { status };
+
+    if (status === 'ACTIVE') {
+      data.activatedAt = new Date();
+    } else if (status === 'SUSPENDED') {
+      data.suspendedAt = new Date();
+    } else if (status === 'DELETED') {
+      data.deletedAt = new Date();
     }
 
-    await this.getTenantById(id);
-    return this.repo.updateTenant(id, { status });
+    return this.updateTenant(id, data);
   }
 
   async deleteTenant(id: string) {
@@ -157,29 +218,60 @@ export class TenantService {
     const cleanHost = host.trim().toLowerCase();
     const hostWithoutPort = cleanHost.includes(':') ? cleanHost.split(':')[0] : cleanHost;
 
-    // 1. Match customDomain
-    let tenant = await this.repo.getTenantByCustomDomain(cleanHost)
-      || await this.repo.getTenantByCustomDomain(hostWithoutPort);
+    let tenant = await prisma.tenant.findFirst({
+      where: {
+        OR: [
+          { customDomain: cleanHost },
+          { customDomain: hostWithoutPort },
+          { primaryDomain: cleanHost },
+          { primaryDomain: hostWithoutPort },
+          { primarySubdomain: cleanHost },
+          { primarySubdomain: hostWithoutPort },
+          { slug: cleanHost },
+          { slug: hostWithoutPort },
+        ],
+      },
+    });
 
-    // 2. Match subdomain
     if (!tenant) {
-      tenant = await this.repo.getTenantBySubdomain(cleanHost)
-        || await this.repo.getTenantBySubdomain(hostWithoutPort);
+      const domainRecord = await prisma.tenantDomain.findFirst({
+        where: {
+          OR: [
+            { host: cleanHost },
+            { host: hostWithoutPort },
+          ],
+        },
+        include: {
+          tenant: true,
+        },
+      });
+      if (domainRecord) {
+        tenant = domainRecord.tenant;
+      }
     }
 
-    // 3. Match slug
-    if (!tenant) {
-      tenant = await this.repo.getTenantBySlug(cleanHost)
-        || await this.repo.getTenantBySlug(hostWithoutPort);
-    }
-
-    // 4. Match subdomain/slug prefix (e.g. my-studio.localhost:3000 -> prefix "my-studio")
     if (!tenant) {
       const parts = hostWithoutPort.split('.');
       if (parts.length > 1) {
         const prefix = parts[0];
-        tenant = await this.repo.getTenantBySubdomain(prefix)
-          || await this.repo.getTenantBySlug(prefix);
+        tenant = await prisma.tenant.findFirst({
+          where: {
+            OR: [
+              { primarySubdomain: prefix },
+              { slug: prefix },
+            ],
+          },
+        });
+
+        if (!tenant) {
+          const domainRecord = await prisma.tenantDomain.findFirst({
+            where: { host: prefix },
+            include: { tenant: true },
+          });
+          if (domainRecord) {
+            tenant = domainRecord.tenant;
+          }
+        }
       }
     }
 

@@ -1,7 +1,11 @@
 import jwt from 'jsonwebtoken';
+import { PrismaClient } from '../services/tenant-service/src/generated/client/index.js';
 
 const SERVICE_URL = 'http://localhost:4005';
 const JWT_SECRET = 'your_super_secret_jwt_signing_key_at_least_8_chars';
+
+// Establish a direct Prisma client to seed/teardown relational data
+const prisma = new PrismaClient();
 
 // Generate mock JWTs for different roles/tenants
 function generateToken(payload: object): string {
@@ -14,7 +18,6 @@ const superAdminToken = generateToken({
   email: 'superadmin@saasplatform.com',
 });
 
-// We will dynamically replace tenantId once the tenant is created
 let tenantId = 'temp-id';
 
 function getTenantAdminToken() {
@@ -87,7 +90,7 @@ async function makeRequest(
 }
 
 async function runTests() {
-  console.log('🏁 Starting Tenant Service Lifecycle & Boundaries Verification Tests\n');
+  console.log('🏁 Starting Complete Tenant Service (Updated Schema) Verification Tests\n');
 
   let passed = 0;
   let failed = 0;
@@ -102,21 +105,43 @@ async function runTests() {
     }
   }
 
+  // Generate unique test IDs to avoid collisions
+  const testUserId = '8a7d363b-63a2-4a0b-b184-5f5c9e2b1011';
+  const testUserEmail = `member-${Date.now()}@example.com`;
+  const slug = `studio-${Date.now()}`;
+
   try {
+    // 0. Seed Database dependency
+    console.log('--- Step 0: Seed test User in DB ---');
+    await prisma.user.upsert({
+      where: { id: testUserId },
+      update: {},
+      create: {
+        id: testUserId,
+        email: testUserEmail,
+      },
+    });
+    console.log(`Seeded user ${testUserEmail} with ID ${testUserId}`);
+
     // 1. Create Tenant (Super Admin Only)
-    console.log('--- Step 1: Create Tenant (Super Admin) ---');
-    const slug = `studio-${Date.now()}`;
+    console.log('\n--- Step 1: Create Tenant (Super Admin) ---');
     const createRes = await makeRequest('/api/v1/tenants', 'POST', {
       name: 'Studio Cinema',
       slug,
-      subdomain: slug,
+      primarySubdomain: slug,
       customDomain: `${slug}.com`,
       branding: {
         primaryColor: '#ff0000',
         backgroundColor: '#000000',
       },
       settings: {
-        billingPlan: 'starter',
+        customConfigEnabled: true,
+      },
+      limits: {
+        maxStorageBytes: 50000,
+      },
+      features: {
+        drmEnabled: true,
       },
     }, superAdminToken);
 
@@ -124,12 +149,14 @@ async function runTests() {
     assert(createRes.body.tenant.name === 'Studio Cinema', 'Tenant name matches');
     assert(createRes.body.tenant.slug === slug, 'Tenant slug matches');
     assert(createRes.body.tenant.branding.primaryColor === '#ff0000', 'Branding is saved correctly');
-    assert(createRes.body.tenant.settings.billingPlan === 'starter', 'Settings are saved correctly');
+    assert(createRes.body.tenant.settings.customConfigEnabled === true, 'Settings are saved correctly');
+    assert(createRes.body.tenant.limits.maxStorageBytes === 50000, 'Limits are saved correctly');
+    assert(createRes.body.tenant.features.drmEnabled === true, 'Features are saved correctly');
 
     const createdTenant = createRes.body.tenant;
-    tenantId = createdTenant.id; // Assign dynamically for subsequent tokens
+    tenantId = createdTenant.id;
 
-    // Try creating duplicate slug
+    // Verify duplicate checks
     console.log('\n--- Step 1b: Verify uniqueness constraint ---');
     const dupRes = await makeRequest('/api/v1/tenants', 'POST', {
       name: 'Duplicate Studio',
@@ -166,20 +193,40 @@ async function runTests() {
     assert(brandingRes.body.tenant.branding.primaryColor === '#00ff00', 'Branding primaryColor updated');
     assert(brandingRes.body.tenant.branding.logoUrl === 'https://cdn.platform.com/logo.png', 'Branding logoUrl updated');
 
-    // 4. Update Settings / Quotas (Tenant Admin NOT allowed, Super Admin only)
-    console.log('\n--- Step 4: Settings & Quotas Security ---');
+    // 4. Update Settings, Limits, Features (Tenant Admin NOT allowed, Super Admin only)
+    console.log('\n--- Step 4: Settings, Limits & Features Security ---');
     const settingsTa = await makeRequest(`/api/v1/tenants/${tenantId}/settings`, 'PUT', {
-      billingPlan: 'enterprise',
-      maxStorageBytes: 1000000,
+      customConfigEnabled: false,
     }, getTenantAdminToken());
-    assert(settingsTa.status === 403, `Tenant Admin is forbidden to change settings/plan (got ${settingsTa.status})`);
+    assert(settingsTa.status === 403, `Tenant Admin is forbidden to change settings (got ${settingsTa.status})`);
+
+    const limitsTa = await makeRequest(`/api/v1/tenants/${tenantId}/limits`, 'PUT', {
+      maxStorageBytes: 999999,
+    }, getTenantAdminToken());
+    assert(limitsTa.status === 403, `Tenant Admin is forbidden to change limits (got ${limitsTa.status})`);
+
+    const featuresTa = await makeRequest(`/api/v1/tenants/${tenantId}/features`, 'PUT', {
+      drmEnabled: false,
+    }, getTenantAdminToken());
+    assert(featuresTa.status === 403, `Tenant Admin is forbidden to change features (got ${featuresTa.status})`);
 
     const settingsSa = await makeRequest(`/api/v1/tenants/${tenantId}/settings`, 'PUT', {
-      billingPlan: 'enterprise',
-      maxStorageBytes: 1099511627776, // 1 TB
+      customConfigEnabled: false,
     }, superAdminToken);
     assert(settingsSa.status === 200, `Super Admin can update settings (got ${settingsSa.status})`);
-    assert(settingsSa.body.tenant.settings.billingPlan === 'enterprise', 'Settings billingPlan updated to enterprise');
+    assert(settingsSa.body.tenant.settings.customConfigEnabled === false, 'Settings updated');
+
+    const limitsSa = await makeRequest(`/api/v1/tenants/${tenantId}/limits`, 'PUT', {
+      maxStorageBytes: 12345,
+    }, superAdminToken);
+    assert(limitsSa.status === 200, `Super Admin can update limits (got ${limitsSa.status})`);
+    assert(limitsSa.body.tenant.limits.maxStorageBytes === 12345, 'Limits updated');
+
+    const featuresSa = await makeRequest(`/api/v1/tenants/${tenantId}/features`, 'PUT', {
+      drmEnabled: false,
+    }, superAdminToken);
+    assert(featuresSa.status === 200, `Super Admin can update features (got ${featuresSa.status})`);
+    assert(featuresSa.body.tenant.features.drmEnabled === false, 'Features updated');
 
     // 5. Host & Domain Resolution
     console.log('\n--- Step 5: Subdomain and Custom Domain Resolution ---');
@@ -194,46 +241,115 @@ async function runTests() {
     assert(resolveDom.status === 200, `Resolves correctly via customDomain (got ${resolveDom.status})`);
     assert(resolveDom.body.tenant.id === tenantId, 'Resolved custom domain tenant ID matches');
 
-    // 6. Tenant Status & Lifecycle Management (Suspension)
-    console.log('\n--- Step 6: Tenant Suspension & Lifecycle ---');
+    // 6. Domain Management Map (CRUD & Verification)
+    console.log('\n--- Step 6: Domain Mapping & Verification ---');
+    
+    const targetHost = `cinema-${Date.now()}.com`;
+    // Add custom domain mapping
+    const addDomRes = await makeRequest(`/api/v1/tenants/${tenantId}/domains`, 'POST', {
+      host: targetHost,
+      type: 'CUSTOM_DOMAIN',
+    }, getTenantAdminToken());
+    assert(addDomRes.status === 201, `Domain mapping added successfully (got ${addDomRes.status})`);
+    assert(addDomRes.body.domain.host === targetHost, 'Mapped host name matches');
+    assert(addDomRes.body.domain.status === 'PENDING', 'Initial mapped domain status is PENDING');
+
+    const domainId = addDomRes.body.domain.id;
+
+    // List domains
+    const listDomRes = await makeRequest(`/api/v1/tenants/${tenantId}/domains`, 'GET', undefined, getTenantAdminToken());
+    assert(listDomRes.status === 200, 'Domains list retrieved successfully');
+    assert(listDomRes.body.domains.some((d: any) => d.id === domainId), 'List contains newly added domain mapping');
+
+    // Verify domain mapping (updates status to ACTIVE)
+    const verifyDomRes = await makeRequest(`/api/v1/tenants/domains/${domainId}/verify`, 'PATCH', undefined, getTenantAdminToken());
+    assert(verifyDomRes.status === 200, 'Domain verification request succeeded');
+    assert(verifyDomRes.body.domain.status === 'ACTIVE', 'Domain status changed to ACTIVE after verification');
+
+    // Resolve resolved tenant using the new verified mapping
+    const resolveNewDom = await makeRequest(`/api/v1/tenants/resolve?host=${targetHost}`, 'GET');
+    assert(resolveNewDom.status === 200 && resolveNewDom.body.tenant.id === tenantId, 'Successfully resolved tenant using the new domain mapping');
+
+    // Delete domain mapping
+    const delDomRes = await makeRequest(`/api/v1/tenants/domains/${domainId}`, 'DELETE', undefined, getTenantAdminToken());
+    assert(delDomRes.status === 200, 'Domain mapping deleted successfully');
+
+    // 7. Team Membership Context
+    console.log('\n--- Step 7: Team Membership Context & Roles ---');
+    
+    // Add membership
+    const addMemberRes = await makeRequest(`/api/v1/tenants/${tenantId}/users`, 'POST', {
+      userId: testUserId,
+      role: 'STAFF',
+    }, getTenantAdminToken());
+    assert(addMemberRes.status === 201, `Added user to tenant team successfully (got ${addMemberRes.status})`);
+    assert(addMemberRes.body.member.role === 'STAFF', 'Role is correctly set to STAFF');
+
+    // List memberships
+    const listMembersRes = await makeRequest(`/api/v1/tenants/${tenantId}/users`, 'GET', undefined, getTenantAdminToken());
+    assert(listMembersRes.status === 200, 'Members list retrieved successfully');
+    assert(listMembersRes.body.users.some((m: any) => m.userId === testUserId), 'List contains the added member');
+
+    // Update role
+    const updateRoleRes = await makeRequest(`/api/v1/tenants/${tenantId}/users/${testUserId}`, 'PUT', {
+      role: 'ADMIN',
+    }, getTenantAdminToken());
+    assert(updateRoleRes.status === 200, 'Member role updated successfully');
+    assert(updateRoleRes.body.member.role === 'ADMIN', 'Member role changed to ADMIN');
+
+    // Remove user membership
+    const removeMemberRes = await makeRequest(`/api/v1/tenants/${tenantId}/users/${testUserId}`, 'DELETE', undefined, getTenantAdminToken());
+    assert(removeMemberRes.status === 200, 'Member team membership removed successfully');
+
+    // 8. Tenant Status & Lifecycle Management (Suspension)
+    console.log('\n--- Step 8: Tenant Suspension & Lifecycle ---');
     
     // Suspend tenant
     const suspendRes = await makeRequest(`/api/v1/tenants/${tenantId}/status`, 'PATCH', {
-      status: 'suspended',
+      status: 'SUSPENDED',
     }, superAdminToken);
     assert(suspendRes.status === 200, `Super Admin can suspend tenant (got ${suspendRes.status})`);
-    assert(suspendRes.body.tenant.status === 'suspended', 'Tenant status is suspended');
-
-    // Verify resolved tenant indicates suspended
-    const resolveSuspended = await makeRequest(`/api/v1/tenants/resolve?host=${slug}.com`, 'GET');
-    assert(resolveSuspended.status === 200 && resolveSuspended.body.tenant.status === 'suspended', 'Resolution returns suspended status status');
+    assert(suspendRes.body.tenant.status === 'SUSPENDED', 'Tenant status is SUSPENDED');
+    assert(!!suspendRes.body.tenant.suspendedAt, 'suspendedAt timestamp is recorded');
 
     // Reactivate tenant
     const reactivateRes = await makeRequest(`/api/v1/tenants/${tenantId}/status`, 'PATCH', {
-      status: 'active',
+      status: 'ACTIVE',
     }, superAdminToken);
     assert(reactivateRes.status === 200, 'Reactivated tenant successfully');
-    assert(reactivateRes.body.tenant.status === 'active', 'Tenant status is active');
+    assert(reactivateRes.body.tenant.status === 'ACTIVE', 'Tenant status is ACTIVE');
 
-    // 7. Cleanup & Teardown
-    console.log('\n--- Step 7: Cleanup & Teardown ---');
+    // 9. Cleanup & Teardown
+    console.log('\n--- Step 9: Cleanup & Teardown ---');
+    
+    // Delete tenant
     const deleteRes = await makeRequest(`/api/v1/tenants/${tenantId}`, 'DELETE', undefined, superAdminToken);
     assert(deleteRes.status === 200, `Tenant deleted successfully (got ${deleteRes.status})`);
+
+    // Clean up user database dependency
+    await prisma.user.delete({ where: { id: testUserId } });
+    console.log('Teared down seeded user from database.');
 
     const finalResolve = await makeRequest(`/api/v1/tenants/resolve?host=${slug}.com`, 'GET');
     assert(finalResolve.status === 404, `Resolved tenant is no longer available (got ${finalResolve.status})`);
 
-    console.log('\n--- Integration Tests Finished ---');
+    console.log('\n--- Complete Integration Tests Finished ---');
     console.log(`Result: ${passed} passed, ${failed} failed.\n`);
     if (failed > 0) {
       process.exit(1);
     } else {
-      console.log('🎉 ALL TENANT SERVICE SPECIFICATIONS VERIFIED SUCCESSFULLY!');
+      console.log('🎉 ALL UPDATED TENANT SERVICE SPECIFICATIONS VERIFIED SUCCESSFULLY!');
       process.exit(0);
     }
   } catch (err) {
     console.error('Fatal integration test error:', err);
+    // Attempt database cleanup in case of crash
+    try {
+      await prisma.user.delete({ where: { id: testUserId } }).catch(() => {});
+    } catch {}
     process.exit(1);
+  } finally {
+    await prisma.$disconnect();
   }
 }
 

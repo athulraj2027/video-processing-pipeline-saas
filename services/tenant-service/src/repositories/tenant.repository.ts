@@ -3,11 +3,23 @@ import { prisma } from '../config/db.js';
 export interface CreateTenantInput {
   name: string;
   slug: string;
-  subdomain?: string;
+  primarySubdomain?: string;
+  primaryDomain?: string;
   customDomain?: string;
-  status?: string;
+  status?: 'ONBOARDING' | 'ACTIVE' | 'SUSPENDED' | 'DELETED';
+  planType?: 'STARTER' | 'GROWTH' | 'ENTERPRISE' | 'CUSTOM';
+  billingStatus?: 'TRIALING' | 'ACTIVE' | 'PAST_DUE' | 'CANCELED' | 'PAUSED';
   branding?: any;
   settings?: any;
+  limits?: any;
+  features?: any;
+  metadata?: any;
+  stripeCustomerId?: string;
+  stripeConnectAcctId?: string;
+  billingEmail?: string;
+  supportEmail?: string;
+  trialEndsAt?: Date;
+  createdById?: string;
 }
 
 export class TenantRepository {
@@ -16,11 +28,24 @@ export class TenantRepository {
       data: {
         name: data.name,
         slug: data.slug,
-        subdomain: data.subdomain || null,
+        status: data.status || 'ONBOARDING',
+        planType: data.planType || 'STARTER',
+        billingStatus: data.billingStatus || 'TRIALING',
+        primarySubdomain: data.primarySubdomain || null,
+        primaryDomain: data.primaryDomain || null,
         customDomain: data.customDomain || null,
-        status: data.status || 'active',
         branding: data.branding || {},
         settings: data.settings || {},
+        limits: data.limits || {},
+        features: data.features || {},
+        metadata: data.metadata || {},
+        stripeCustomerId: data.stripeCustomerId || null,
+        stripeConnectAcctId: data.stripeConnectAcctId || null,
+        billingEmail: data.billingEmail || null,
+        supportEmail: data.supportEmail || null,
+        trialEndsAt: data.trialEndsAt || null,
+        createdById: data.createdById || null,
+        activatedAt: data.status === 'ACTIVE' ? new Date() : null,
       },
     });
   }
@@ -28,6 +53,10 @@ export class TenantRepository {
   async getTenantById(id: string) {
     return prisma.tenant.findUnique({
       where: { id },
+      include: {
+        domains: true,
+        users: true,
+      },
     });
   }
 
@@ -39,7 +68,7 @@ export class TenantRepository {
 
   async getTenantBySubdomain(subdomain: string) {
     return prisma.tenant.findUnique({
-      where: { subdomain },
+      where: { primarySubdomain: subdomain },
     });
   }
 
@@ -65,6 +94,9 @@ export class TenantRepository {
   async listTenants() {
     return prisma.tenant.findMany({
       orderBy: { createdAt: 'desc' },
+      include: {
+        domains: true,
+      },
     });
   }
 }

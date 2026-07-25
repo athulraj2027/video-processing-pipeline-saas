@@ -3,7 +3,10 @@ import { tenantService } from '../services/tenant.service.js';
 import catchAsync from '../utils/catchAsync.js';
 
 export const createTenant = catchAsync(async (req: Request, res: Response) => {
-  const tenant = await tenantService.createTenant(req.body);
+  const tenant = await tenantService.createTenant({
+    ...req.body,
+    createdById: req.user?.id,
+  });
   res.status(201).json({
     message: 'Tenant created successfully',
     tenant,
@@ -39,6 +42,24 @@ export const updateSettings = catchAsync(async (req: Request, res: Response) => 
   const tenant = await tenantService.updateSettings(id, req.body);
   res.json({
     message: 'Tenant settings updated successfully',
+    tenant,
+  });
+});
+
+export const updateLimits = catchAsync(async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const tenant = await tenantService.updateLimits(id, req.body);
+  res.json({
+    message: 'Tenant limits updated successfully',
+    tenant,
+  });
+});
+
+export const updateFeatures = catchAsync(async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const tenant = await tenantService.updateFeatures(id, req.body);
+  res.json({
+    message: 'Tenant features updated successfully',
     tenant,
   });
 });

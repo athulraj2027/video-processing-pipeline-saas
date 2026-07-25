@@ -5,19 +5,229 @@ datasource db {
 
 generator client {
   provider = "prisma-client-js"
+  output   = "../src/generated/client"
+}
+
+enum TenantStatus {
+  ONBOARDING
+  ACTIVE
+  SUSPENDED
+  DELETED
+}
+
+enum TenantPlanType {
+  STARTER
+  GROWTH
+  ENTERPRISE
+  CUSTOM
+}
+
+enum TenantBillingStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  PAUSED
+}
+
+enum DomainType {
+  SUBDOMAIN
+  CUSTOM_DOMAIN
+  PRIMARY_DOMAIN
+}
+
+enum DomainStatus {
+  PENDING
+  VERIFIED
+  ACTIVE
+  SUSPENDED
+  FAILED
+}
+
+enum TenantRole {
+  OWNER
+  ADMIN
+  STAFF
+  SUPPORT
+  ANALYST
+  VIEWER
 }
 
 model Tenant {
-  id           String   @id @default(uuid())
-  name         String
-  slug         String   @unique
-  subdomain    String?  @unique
-  customDomain String?  @unique
-  status       String   @default("active") // "onboarding", "active", "suspended", "deleted"
-  branding     Json     @default("{}")
-  settings     Json     @default("{}")
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  id                  String              @id @default(uuid())
+  name                String
+  slug                String              @unique
+  status              TenantStatus        @default(ONBOARDING)
+  planType            TenantPlanType      @default(STARTER)
+  billingStatus       TenantBillingStatus @default(TRIALING)
 
+  primarySubdomain    String?             @unique
+  primaryDomain       String?             @unique
+  customDomain        String?             @unique
+
+  branding            Json                @default("{}")
+  settings            Json                @default("{}")
+  limits              Json                @default("{}")
+  features            Json                @default("{}")
+  metadata            Json                @default("{}")
+
+  stripeCustomerId    String?             @unique
+  stripeConnectAcctId String?             @unique
+  billingEmail        String?
+  supportEmail        String?
+
+  trialEndsAt         DateTime?
+  activatedAt         DateTime?
+  suspendedAt         DateTime?
+  deletedAt           DateTime?
+
+  createdById         String?
+  updatedById         String?
+
+  createdAt           DateTime            @default(now()) @map("created_at")
+  updatedAt           DateTime            @updatedAt @map("updated_at")
+
+  domains             TenantDomain[]
+  users               TenantUser[]
+  billingAccount      TenantBillingAccount?
+  subscriptions       TenantSubscription[]
+  apiKeys             TenantApiKey[]
+  auditLogs           TenantAuditLog[]
+
+  @@index([status])
+  @@index([planType])
+  @@index([billingStatus])
+  @@index([primarySubdomain])
+  @@index([primaryDomain])
   @@map("tenants")
+}
+
+model TenantDomain {
+  id                String       @id @default(uuid())
+  tenantId          String
+  host              String       @unique
+  type              DomainType
+  status            DomainStatus @default(PENDING)
+  isPrimary         Boolean      @default(false)
+  verificationToken String?
+  sslStatus         String?
+  lastVerifiedAt    DateTime?
+  createdAt         DateTime     @default(now()) @map("created_at")
+  updatedAt         DateTime     @updatedAt @map("updated_at")
+
+  tenant            Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([host])
+  @@map("tenant_domains")
+}
+
+model TenantUser {
+  id        String   @id @default(uuid())
+  tenantId  String
+  userId    String
+  role      TenantRole
+  status    String   @default("active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, userId])
+  @@index([tenantId])
+  @@index([userId])
+  @@map("tenant_users")
+}
+
+model TenantBillingAccount {
+  id                 String   @id @default(uuid())
+  tenantId           String   @unique
+  currency           String   @default("USD")
+  country            String?
+  taxId              String?
+  billingAddress     Json     @default("{}")
+  invoiceSettings    Json     @default("{}")
+  paymentMethodId    String?
+  providerCustomerId String?
+  providerData       Json     @default("{}")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  tenant             Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("tenant_billing_accounts")
+}
+
+model TenantSubscription {
+  id                 String              @id @default(uuid())
+  tenantId           String
+  provider           String              @default("stripe")
+  providerSubId      String?             @unique
+  planCode           String
+  status             TenantBillingStatus
+  currentPeriodStart DateTime?
+  currentPeriodEnd   DateTime?
+  cancelAtPeriodEnd  Boolean             @default(false)
+  trialEndsAt        DateTime?
+  seatLimit          Int?
+  metadata           Json                @default("{}")
+  createdAt          DateTime            @default(now()) @map("created_at")
+  updatedAt          DateTime            @updatedAt @map("updated_at")
+
+  tenant             Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([status])
+  @@map("tenant_subscriptions")
+}
+
+model TenantApiKey {
+  id         String   @id @default(uuid())
+  tenantId   String
+  name       String
+  keyPrefix  String   @unique
+  keyHash    String   @unique
+  scopes     String[]
+  lastUsedAt DateTime?
+  expiresAt  DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("tenant_api_keys")
+}
+
+model TenantAuditLog {
+  id          String   @id @default(uuid())
+  tenantId    String?
+  actorUserId String?
+  action      String
+  entityType  String
+  entityId    String?
+  requestId   String?
+  ipAddress   String?
+  userAgent   String?
+  before      Json?
+  after       Json?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  tenant      Tenant?  @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([actorUserId])
+  @@index([action])
+  @@index([entityType, entityId])
+  @@map("tenant_audit_logs")
+}
+
+model User {
+  id          String       @id @default(uuid())
+  email       String       @unique
+  tenantUsers TenantUser[]
+
+  @@map("users")
 }

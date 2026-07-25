@@ -1,6 +1,6 @@
 import { createExpressApp } from './config/expressApp.js';
 import { corsMiddleware } from './config/cors.js';
-import tenantRouter from './routes/tenant.routes.js';
+import tenantRouter from './routes/index.js';
 import { errorHandler, notFoundError } from './middlewares/middleware.js';
 
 export const app = createExpressApp();

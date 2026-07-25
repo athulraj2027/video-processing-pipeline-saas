@@ -1,11 +1,23 @@
 import { z } from 'zod';
 
+export const TenantStatusEnum = z.enum(['ONBOARDING', 'ACTIVE', 'SUSPENDED', 'DELETED']);
+export const TenantPlanTypeEnum = z.enum(['STARTER', 'GROWTH', 'ENTERPRISE', 'CUSTOM']);
+export const TenantBillingStatusEnum = z.enum(['TRIALING', 'ACTIVE', 'PAST_DUE', 'CANCELED', 'PAUSED']);
+
 export const createTenantSchema = z.object({
   name: z.string().min(1, 'Name is required').max(100),
   slug: z.string().min(1, 'Slug is required').max(100).regex(/^[a-z0-9-]+$/, 'Slug must be alphanumeric or hyphens in lowercase'),
-  subdomain: z.string().min(1).max(100).regex(/^[a-z0-9-]+$/, 'Subdomain must be alphanumeric or hyphens in lowercase').optional(),
+  status: TenantStatusEnum.optional(),
+  planType: TenantPlanTypeEnum.optional(),
+  billingStatus: TenantBillingStatusEnum.optional(),
+  primarySubdomain: z.string().min(1).max(100).regex(/^[a-z0-9-]+$/, 'Subdomain must be alphanumeric or hyphens in lowercase').optional(),
+  primaryDomain: z.string().min(1).max(255).optional(),
   customDomain: z.string().min(1).max(255).optional(),
-  status: z.enum(['onboarding', 'active', 'suspended', 'deleted']).optional(),
+  stripeCustomerId: z.string().nullable().optional(),
+  stripeConnectAcctId: z.string().nullable().optional(),
+  billingEmail: z.string().email().nullable().optional(),
+  supportEmail: z.string().email().nullable().optional(),
+  trialEndsAt: z.preprocess((val) => (typeof val === 'string' ? new Date(val) : val), z.date()).optional(),
   branding: z.object({
     logoUrl: z.string().url().nullable().optional(),
     faviconUrl: z.string().url().nullable().optional(),
@@ -15,17 +27,16 @@ export const createTenantSchema = z.object({
     playerSkin: z.string().optional(),
     customCss: z.string().nullable().optional(),
   }).optional(),
-  settings: z.object({
-    billingPlan: z.enum(['starter', 'growth', 'enterprise']).optional(),
+  settings: z.record(z.any()).optional(),
+  limits: z.object({
     maxStorageBytes: z.number().nonnegative().optional(),
     maxBandwidthBytes: z.number().nonnegative().optional(),
-    stripeCustomerId: z.string().nullable().optional(),
-    stripeAccountId: z.string().nullable().optional(),
-    features: z.object({
-      drmEnabled: z.boolean().optional(),
-      geoRestrictionsEnabled: z.boolean().optional(),
-      subtitlesEnabled: z.boolean().optional(),
-    }).optional(),
+    maxUsers: z.number().nonnegative().optional(),
+  }).optional(),
+  features: z.object({
+    drmEnabled: z.boolean().optional(),
+    geoRestrictionsEnabled: z.boolean().optional(),
+    subtitlesEnabled: z.boolean().optional(),
   }).optional(),
 });
 
@@ -41,26 +52,28 @@ export const updateBrandingSchema = z.object({
   customCss: z.string().nullable().optional(),
 });
 
-export const updateSettingsSchema = z.object({
-  billingPlan: z.enum(['starter', 'growth', 'enterprise']).optional(),
+export const updateSettingsSchema = z.record(z.any());
+
+export const updateLimitsSchema = z.object({
   maxStorageBytes: z.number().nonnegative().optional(),
   maxBandwidthBytes: z.number().nonnegative().optional(),
-  stripeCustomerId: z.string().nullable().optional(),
-  stripeAccountId: z.string().nullable().optional(),
-  features: z.object({
-    drmEnabled: z.boolean().optional(),
-    geoRestrictionsEnabled: z.boolean().optional(),
-    subtitlesEnabled: z.boolean().optional(),
-  }).optional(),
+  maxUsers: z.number().nonnegative().optional(),
+});
+
+export const updateFeaturesSchema = z.object({
+  drmEnabled: z.boolean().optional(),
+  geoRestrictionsEnabled: z.boolean().optional(),
+  subtitlesEnabled: z.boolean().optional(),
 });
 
 export const updateStatusSchema = z.object({
-  status: z.enum(['onboarding', 'active', 'suspended', 'deleted'], {
-    errorMap: () => ({ message: 'Status must be one of: onboarding, active, suspended, deleted' }),
-  }),
+  status: TenantStatusEnum,
 });
+
 export type CreateTenantDto = z.infer<typeof createTenantSchema>;
 export type UpdateTenantDto = z.infer<typeof updateTenantSchema>;
 export type UpdateBrandingDto = z.infer<typeof updateBrandingSchema>;
 export type UpdateSettingsDto = z.infer<typeof updateSettingsSchema>;
+export type UpdateLimitsDto = z.infer<typeof updateLimitsSchema>;
+export type UpdateFeaturesDto = z.infer<typeof updateFeaturesSchema>;
 export type UpdateStatusDto = z.infer<typeof updateStatusSchema>;
