@@ -22,7 +22,7 @@ if (env.TENANT_MAPPING) {
   }
 }
 
-export function tenantResolver(req: Request, res: Response, next: NextFunction) {
+export async function tenantResolver(req: Request, res: Response, next: NextFunction) {
   // 1. Resolve host from headers
   const rawHost = req.headers['x-tenant-host'] || req.headers['host'];
   
@@ -39,8 +39,9 @@ export function tenantResolver(req: Request, res: Response, next: NextFunction) 
     ? rawHost[0].toLowerCase() 
     : rawHost.toLowerCase();
 
-  // 2. Perform mapping lookup
+  // 2. Perform static mapping lookup
   let tenantId = localTenantMap.get(host);
+  let isSuspended = false;
 
   // Fallback: strip port if host has it
   if (!tenantId && host.includes(':')) {
@@ -48,7 +49,42 @@ export function tenantResolver(req: Request, res: Response, next: NextFunction) 
     tenantId = localTenantMap.get(hostname);
   }
 
-  // 3. Handle mapping failure
+  // 3. Fallback: Query Tenant Service dynamically
+  if (!tenantId) {
+    try {
+      const resolveUrl = `${env.TENANT_SERVICE_URL}/api/v1/tenants/resolve?host=${encodeURIComponent(host)}`;
+      const response = await fetch(resolveUrl);
+      if (response.ok) {
+        const data = (await response.json()) as any;
+        if (data?.tenant) {
+          const tenant = data.tenant;
+          tenantId = tenant.id;
+          
+          if (tenant.status === 'SUSPENDED') {
+            isSuspended = true;
+          }
+
+          // Cache verified active tenant mappings locally
+          if (tenantId && !isSuspended) {
+            localTenantMap.set(host, tenantId);
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Failed to resolve tenant dynamically from tenant-service:', err);
+    }
+  }
+
+  // 4. Handle suspended tenant storefronts
+  if (isSuspended) {
+    res.status(403).json({
+      error: 'Forbidden',
+      message: 'This tenant storefront has been suspended.',
+    });
+    return;
+  }
+
+  // 5. Handle mapping failure
   if (!tenantId) {
     res.status(404).json({
       error: 'Not Found',
@@ -57,7 +93,7 @@ export function tenantResolver(req: Request, res: Response, next: NextFunction) 
     return;
   }
 
-  // 4. Attach context and set downstream response header
+  // 6. Attach context and set downstream response header
   req.tenantId = tenantId;
   res.setHeader('X-Tenant-Id', tenantId);
 

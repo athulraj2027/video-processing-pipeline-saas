@@ -1,8 +1,59 @@
 import { Request, Response, NextFunction } from 'express';
 import { ForbiddenError, UnauthorizedError } from '../errors/appError.js';
-import { requireRole as requireRoleBase } from '@saas-vod/auth-middleware';
+import {
+  authenticate as jwtAuthenticate,
+  optionalAuthenticate as jwtOptionalAuthenticate,
+  requireRole as requireRoleBase,
+} from '@saas-vod/auth-middleware';
+import { apiKeyService } from '../services/apiKey.service.js';
 
-export { authenticate, optionalAuthenticate } from '@saas-vod/auth-middleware';
+/**
+ * Custom authentication middleware.
+ * Supports:
+ * 1. x-api-key header authentication.
+ * 2. Standard JWT token authentication (forwarded via Gateway or directly).
+ */
+export async function authenticate(req: Request, res: Response, next: NextFunction) {
+  const apiKeyHeader = req.headers['x-api-key'];
+  if (apiKeyHeader) {
+    try {
+      const apiKeyRecord = await apiKeyService.verifyApiKey(String(apiKeyHeader));
+      req.user = {
+        id: `api-key-${apiKeyRecord.id}`,
+        role: 'tenant_admin', // Treat API Key actors as tenant_admin scope
+        email: `apikey-${apiKeyRecord.keyPrefix}@tenant.com`,
+        tenantId: apiKeyRecord.tenantId,
+      };
+      req.tenantId = apiKeyRecord.tenantId;
+      return next();
+    } catch (err: any) {
+      return next(new UnauthorizedError(err.message || 'Invalid API Key'));
+    }
+  }
+
+  jwtAuthenticate(req, res, next);
+}
+
+export async function optionalAuthenticate(req: Request, res: Response, next: NextFunction) {
+  const apiKeyHeader = req.headers['x-api-key'];
+  if (apiKeyHeader) {
+    try {
+      const apiKeyRecord = await apiKeyService.verifyApiKey(String(apiKeyHeader));
+      req.user = {
+        id: `api-key-${apiKeyRecord.id}`,
+        role: 'tenant_admin',
+        email: `apikey-${apiKeyRecord.keyPrefix}@tenant.com`,
+        tenantId: apiKeyRecord.tenantId,
+      };
+      req.tenantId = apiKeyRecord.tenantId;
+      return next();
+    } catch (err) {
+      // Treat invalid API key as unauthenticated guest in optional mode
+    }
+  }
+
+  jwtOptionalAuthenticate(req, res, next);
+}
 
 /**
  * Middleware to enforce tenant-level isolation boundaries.
