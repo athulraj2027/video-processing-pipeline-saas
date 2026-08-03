@@ -6,31 +6,21 @@ import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { validateForgotPassword, ForgotPasswordErrors } from "@/utils/validation";
 
 export default function ForgotPasswordForm() {
     const router = useRouter();
     const [email, setEmail] = useState("");
     const [loading, setLoading] = useState(false);
-    const [errors, setErrors] = useState<Record<string, string>>({});
-
-    const validate = () => {
-        const newErrors: Record<string, string> = {};
-
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!email.trim()) {
-            newErrors.email = "Email address is required";
-        } else if (!emailRegex.test(email)) {
-            newErrors.email = "Please enter a valid email address";
-        }
-
-        setErrors(newErrors);
-        return Object.keys(newErrors).length === 0;
-    };
+    const [errors, setErrors] = useState<ForgotPasswordErrors>({});
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (!validate()) return;
+        const newErrors = validateForgotPassword(email);
+        setErrors(newErrors);
+
+        if (Object.keys(newErrors).length > 0) return;
 
         setLoading(true);
         // Simulate API call

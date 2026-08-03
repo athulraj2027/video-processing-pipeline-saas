@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { validateVerifyOtp } from "@/utils/validation";
 
 export default function VerifyOtpForm() {
     const [otp, setOtp] = useState<string[]>(new Array(6).fill(""));
@@ -62,10 +63,10 @@ export default function VerifyOtpForm() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        const code = otp.join("");
         
-        if (code.length < 6) {
-            setErrors("Please enter all 6 digits of the verification code");
+        const otpError = validateVerifyOtp(otp);
+        if (otpError) {
+            setErrors(otpError);
             return;
         }
 
@@ -73,7 +74,7 @@ export default function VerifyOtpForm() {
         // Simulate API call
         setTimeout(() => {
             setLoading(false);
-            alert(`OTP verified successfully! Code: ${code}`);
+            alert(`OTP verified successfully! Code: ${otp.join("")}`);
         }, 1500);
     };
 

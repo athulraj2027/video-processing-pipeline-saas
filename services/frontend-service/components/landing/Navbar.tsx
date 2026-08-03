@@ -1,7 +1,7 @@
 import Link from "next/link";
-import ThemeToggle from "../ThemeToggle";
 import { NavbarConstants } from "@/constants/constants";
 import NavBtn from "./NavBtn";
+import ThemeToggle from "../ThemeToggle";
 
 const Navbar = () => {
     return (
@@ -16,7 +16,7 @@ const Navbar = () => {
                             {NavbarConstants.OPTIONS.map((option) => (
                                 <Link
                                     key={option.id}
-                                    href={`/landing/#${option.name.toLowerCase().replace(/\s/g, "-")}`}
+                                    href={`/#${option.name.toLowerCase().replace(/\s/g, "-")}`}
                                     className="text-sm font-bold text-foreground hover:text-primary transition-colors"
                                 >
                                     {option.name}

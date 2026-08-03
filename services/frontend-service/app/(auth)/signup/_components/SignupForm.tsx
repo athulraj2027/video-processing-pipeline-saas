@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { validateSignup, SignupErrors } from "@/utils/validation";
 
 export default function SignupForm() {
     const [name, setName] = useState("");
@@ -12,42 +13,14 @@ export default function SignupForm() {
     const [subdomain, setSubdomain] = useState("");
     const [password, setPassword] = useState("");
     const [loading, setLoading] = useState(false);
-    const [errors, setErrors] = useState<Record<string, string>>({});
-
-    const validate = () => {
-        const newErrors: Record<string, string> = {};
-
-        if (!name.trim()) {
-            newErrors.name = "Full name is required";
-        }
-
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!email.trim()) {
-            newErrors.email = "Email address is required";
-        } else if (!emailRegex.test(email)) {
-            newErrors.email = "Please enter a valid email address";
-        }
-
-        if (!subdomain.trim()) {
-            newErrors.subdomain = "Store subdomain is required";
-        } else if (!/^[a-z0-9-]+$/.test(subdomain)) {
-            newErrors.subdomain = "Subdomain can only contain lowercase letters, numbers, and hyphens";
-        }
-
-        if (!password) {
-            newErrors.password = "Password is required";
-        } else if (password.length < 8) {
-            newErrors.password = "Password must be at least 8 characters long";
-        }
-
-        setErrors(newErrors);
-        return Object.keys(newErrors).length === 0;
-    };
+    const [errors, setErrors] = useState<SignupErrors>({});
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        
-        if (!validate()) return;
+        const newErrors = validateSignup(name, email, subdomain, password);
+        setErrors(newErrors);
+
+        if (Object.keys(newErrors).length > 0) return;
 
         setLoading(true);
         // Simulate API call
