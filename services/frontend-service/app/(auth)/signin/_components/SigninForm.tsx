@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { validateSignin, SigninErrors } from "@/utils/validation";
 import { GoogleButton } from "@/components/ui/google-button";
+import { fetchApi, ApiError } from "@/utils/api";
+import { toast } from "@/components/ui/toast";
 
 export default function SigninForm() {
     const [email, setEmail] = useState("");
@@ -25,15 +27,41 @@ export default function SigninForm() {
         if (Object.keys(newErrors).length > 0) return;
 
         setLoading(true);
-        // Simulate API call
-        setTimeout(() => {
+        try {
+            const data = await fetchApi<{ token: string }>("/api/v1/auth/login", {
+                method: "POST",
+                body: { email, password },
+            });
+            
+            // Store token
+            if (data.token) {
+                document.cookie = `token=${data.token}; path=/; max-age=86400; SameSite=Lax`;
+                localStorage.setItem("token", data.token);
+            }
+            
+            toast.success("Signed in successfully!");
+        } catch (err) {
+            if (err instanceof ApiError) {
+                setErrors({
+                    apiError: err.message,
+                });
+            } else {
+                setErrors({
+                    apiError: "An unexpected error occurred. Please try again.",
+                });
+            }
+        } finally {
             setLoading(false);
-            alert("Signed in successfully!");
-        }, 1500);
+        }
     };
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
+            {errors.apiError && (
+                <div className="p-3 text-xs font-medium text-destructive bg-destructive/10 rounded-md border border-destructive/20 animate-in fade-in-50 slide-in-from-top-1">
+                    {errors.apiError}
+                </div>
+            )}
             {/* Email Field */}
             <div className="space-y-1">
                 <Label htmlFor="email">Email Address</Label>

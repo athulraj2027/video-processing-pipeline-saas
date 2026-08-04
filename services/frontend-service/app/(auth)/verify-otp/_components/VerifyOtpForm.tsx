@@ -2,10 +2,15 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { validateVerifyOtp } from "@/utils/validation";
+import { fetchApi, ApiError } from "@/utils/api";
+import { toast } from "@/components/ui/toast";
 
 export default function VerifyOtpForm() {
+    const searchParams = useSearchParams();
+    const email = searchParams.get("email") || "";
     const [otp, setOtp] = useState<string[]>(new Array(6).fill(""));
     const [loading, setLoading] = useState(false);
     const [timer, setTimer] = useState(59);
@@ -71,17 +76,46 @@ export default function VerifyOtpForm() {
         }
 
         setLoading(true);
-        // Simulate API call
-        setTimeout(() => {
+        try {
+            await fetchApi("/api/v1/auth/verify-email", {
+                method: "POST",
+                body: { email, otp: otp.join("") },
+            });
+            toast.success("OTP verified successfully!");
+        } catch (err) {
+            if (err instanceof ApiError) {
+                setErrors(err.message);
+            } else {
+                setErrors("An unexpected error occurred. Please try again.");
+            }
+        } finally {
             setLoading(false);
-            alert(`OTP verified successfully! Code: ${otp.join("")}`);
-        }, 1500);
+        }
     };
 
-    const handleResend = () => {
+    const handleResend = async () => {
         if (timer === 0) {
-            setTimer(59);
-            alert("New OTP verification code sent to your email!");
+            if (!email) {
+                setErrors("Email address is missing. Please try requesting a reset again.");
+                return;
+            }
+            setLoading(true);
+            try {
+                await fetchApi("/api/v1/auth/forgot-password", {
+                    method: "POST",
+                    body: { email },
+                });
+                setTimer(59);
+                toast.success("New OTP verification code sent to your email!");
+            } catch (err) {
+                if (err instanceof ApiError) {
+                    setErrors(err.message);
+                } else {
+                    setErrors("Failed to resend OTP. Please try again.");
+                }
+            } finally {
+                setLoading(false);
+            }
         }
     };
 

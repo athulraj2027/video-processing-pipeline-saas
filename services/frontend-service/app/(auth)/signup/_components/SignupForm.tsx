@@ -8,9 +8,10 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { validateSignup, SignupErrors } from "@/utils/validation";
 import { GoogleButton } from "@/components/ui/google-button";
+import { fetchApi, ApiError } from "@/utils/api";
+import { toast } from "@/components/ui/toast";
 
 export default function SignupForm() {
-    const [name, setName] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
@@ -21,40 +22,40 @@ export default function SignupForm() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        const newErrors = validateSignup(name, email, password, confirmPassword);
+        const newErrors = validateSignup(email, password, confirmPassword);
         setErrors(newErrors);
 
         if (Object.keys(newErrors).length > 0) return;
 
         setLoading(true);
-        // Simulate API call
-        setTimeout(() => {
+        try {
+            await fetchApi("/api/v1/auth/signup", {
+                method: "POST",
+                body: { email, password },
+            });
+            toast.success("Signup successful! Welcome to flow studio.");
+        } catch (err) {
+            if (err instanceof ApiError) {
+                setErrors({
+                    apiError: err.message,
+                });
+            } else {
+                setErrors({
+                    apiError: "An unexpected error occurred. Please try again.",
+                });
+            }
+        } finally {
             setLoading(false);
-            alert("Signup successful! Welcome to flow studio.");
-        }, 1500);
+        }
     };
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Name Field */}
-            <div className="space-y-1">
-                <Label htmlFor="name">Full Name</Label>
-                <Input
-                    id="name"
-                    type="text"
-                    placeholder="Jane Doe"
-                    value={name}
-                    onChange={(e) => {
-                        setName(e.target.value);
-                        if (errors.name) setErrors((prev) => ({ ...prev, name: "" }));
-                    }}
-                    className={errors.name ? "border-destructive focus-visible:ring-destructive/20 focus-visible:border-destructive" : ""}
-                />
-                {errors.name && (
-                    <p className="text-xs text-destructive mt-1 font-medium">{errors.name}</p>
-                )}
-            </div>
-
+            {errors.apiError && (
+                <div className="p-3 text-xs font-medium text-destructive bg-destructive/10 rounded-md border border-destructive/20 animate-in fade-in-50 slide-in-from-top-1">
+                    {errors.apiError}
+                </div>
+            )}
             {/* Email Field */}
             <div className="space-y-1">
                 <Label htmlFor="email">Email Address</Label>

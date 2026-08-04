@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import QueryProvider from "@/components/providers/QueryProvider";
+import AppSuspense from "@/components/ui/app-suspense";
+import { Toaster } from "sonner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -47,7 +50,17 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-full flex flex-col bg-background text-foreground transition-colors duration-300">
-        <main className="flex-1 flex flex-col">{children}</main>
+        <QueryProvider>
+          <main className="flex-1 flex flex-col">
+            <AppSuspense>
+              {children}
+            </AppSuspense>
+          </main>
+        </QueryProvider>
+        <Toaster
+          position="top-center"
+          richColors
+        />
       </body>
     </html>
   );
