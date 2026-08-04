@@ -25,6 +25,11 @@
     "libs:build": "npm run build -w libs/auth-middleware",
     "frontend:dev": "npm run dev -w services/frontend",
     "frontend:build": "npm run build -w services/frontend",
-    "frontend:start": "npm run start -w services/frontend"
+    "frontend:start": "npm run start -w services/frontend",
+    "notification:dev": "npm run dev -w services/notification-service",
+    "notification:build": "npm run build -w services/notification-service",
+    "notification:start": "npm run start -w services/notification-service",
+    "notification:prisma:generate": "npm run prisma:generate -w services/notification-service",
+    "notification:prisma:migrate": "npm run prisma:migrate -w services/notification-service"
   }
 }
