@@ -1,0 +1,93 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --background: #f8fafc;
+  /* Slate 50 */
+  --foreground: #070809;
+  /* Slate 900 */
+  --card: #ffffff;
+  --card-foreground: #000000;
+  --border: #e2e8f0;
+  /* Slate 200 */
+  --primary: #1c1fa2;
+  /* Indigo 500 */
+  --primary-foreground: #ffffff;
+  --muted: #f1f5f9;
+  /* Slate 100 */
+  --muted-foreground: #64748b;
+  /* Slate 500 */
+  --accent: #f8fafc;
+  --success: #10b981;
+}
+
+.dark {
+  --background: #000000;
+  /* Deep slate */
+  --foreground: #f8fafc;
+  --card: #000000;
+  --card-foreground: #f8fafc;
+  --border: #000000;
+  /* Slate 800 */
+  --primary: #165bc9;
+  /* Indigo 400 */
+  --primary-foreground: #000000;
+  --muted: #000204;
+  --muted-foreground: #94a3b8;
+  --accent: #000000;
+  --success: #34d399;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-border: var(--border);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-success: var(--success);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
+  transition-property: color, background-color, border-color;
+  transition-duration: 300ms;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Add once to your global stylesheet (e.g. globals.css), outside of any @layer */
+
+@keyframes reveal-blur {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 12px, 0);
+    filter: blur(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+    filter: blur(0);
+  }
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 10px, 0);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}

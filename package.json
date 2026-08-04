@@ -22,6 +22,9 @@
     "upload:dev": "npm run dev -w services/upload-service",
     "upload:build": "npm run build -w services/upload-service",
     "upload:start": "npm run start -w services/upload-service",
-    "libs:build": "npm run build -w libs/auth-middleware"
+    "libs:build": "npm run build -w libs/auth-middleware",
+    "frontend:dev": "npm run dev -w services/frontend",
+    "frontend:build": "npm run build -w services/frontend",
+    "frontend:start": "npm run start -w services/frontend"
   }
 }
