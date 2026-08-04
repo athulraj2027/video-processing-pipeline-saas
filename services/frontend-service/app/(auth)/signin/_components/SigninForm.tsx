@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { validateSignin, SigninErrors } from "@/utils/validation";
+import { GoogleButton } from "@/components/ui/google-button";
 
 export default function SigninForm() {
     const [email, setEmail] = useState("");
@@ -98,6 +99,18 @@ export default function SigninForm() {
                 <Button type="submit" disabled={loading} className="w-full">
                     {loading ? "Signing In..." : "Sign In"}
                 </Button>
+
+                <div className="relative flex items-center justify-center my-1">
+                    <div className="absolute inset-0 flex items-center">
+                        <span className="w-full border-t border-border/80 dark:border-gray-800" />
+                    </div>
+                    <span className="relative bg-card px-2 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+                        Or
+                    </span>
+                </div>
+
+                <GoogleButton type="button" />
+
                 <p className="text-xs text-center text-muted-foreground">
                     Don't have a store?{" "}
                     <Link href="/signup" className="font-semibold text-primary hover:underline">

@@ -1,3 +1,9 @@
+export interface PageContent {
+    badge: string;
+    title: string;
+    description: string;
+}
+
 export const NavbarConstants = {
     SAAS_NAME: 'flow studio',
     SAAS_LOGO: '',
@@ -107,3 +113,26 @@ export const PRICING_CONTENT = {
         },
     ],
 } as const;
+
+export const PAGE_CONTENTS: Record<string, PageContent> = {
+    "/signup": {
+        badge: "Get Started",
+        title: "Launch Your Video Store",
+        description: "Create your account to claim your subdomain, set your pricing, and launch your video storefront in minutes.",
+    },
+    "/signin": {
+        badge: "Welcome Back",
+        title: "Manage Your Channel",
+        description: "Access your dashboard to upload new content, view sales analytics, manage subscriptions, and track payouts.",
+    },
+    "/forgot-password": {
+        badge: "Security First",
+        title: "Recover Your Account",
+        description: "Confirm your registered email address to receive a secure one-time passcode and reset your administrator password.",
+    },
+    "/verify-otp": {
+        badge: "Verification",
+        title: "Protect Your Account",
+        description: "Enter the six-digit verification code sent to your inbox to confirm your identity and secure your store dashboard.",
+    },
+};

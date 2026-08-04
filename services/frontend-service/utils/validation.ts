@@ -47,27 +47,31 @@ export const validateOtp = (otp: string[]): string | null => {
 export interface SignupErrors {
     name?: string;
     email?: string;
-    subdomain?: string;
     password?: string;
+    confirmPassword?: string;
     [key: string]: string | undefined;
 }
 
 export const validateSignup = (
     name: string,
     email: string,
-    subdomain: string,
-    password: string
+    password: string,
+    confirmPassword: string
 ): SignupErrors => {
     const errors: SignupErrors = {};
     const nameErr = validateName(name);
     const emailErr = validateEmail(email);
-    const subdomainErr = validateSubdomain(subdomain);
     const passwordErr = validatePassword(password, false);
 
     if (nameErr) errors.name = nameErr;
     if (emailErr) errors.email = emailErr;
-    if (subdomainErr) errors.subdomain = subdomainErr;
     if (passwordErr) errors.password = passwordErr;
+
+    if (!confirmPassword) {
+        errors.confirmPassword = "Please confirm your password";
+    } else if (password !== confirmPassword) {
+        errors.confirmPassword = "Passwords do not match";
+    }
 
     return errors;
 };
