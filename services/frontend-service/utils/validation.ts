@@ -45,7 +45,6 @@ export const validateOtp = (otp: string[]): string | null => {
 };
 
 export interface SignupErrors {
-    name?: string;
     email?: string;
     password?: string;
     confirmPassword?: string;
@@ -53,17 +52,14 @@ export interface SignupErrors {
 }
 
 export const validateSignup = (
-    name: string,
     email: string,
     password: string,
     confirmPassword: string
 ): SignupErrors => {
     const errors: SignupErrors = {};
-    const nameErr = validateName(name);
     const emailErr = validateEmail(email);
     const passwordErr = validatePassword(password, false);
 
-    if (nameErr) errors.name = nameErr;
     if (emailErr) errors.email = emailErr;
     if (passwordErr) errors.password = passwordErr;
 

@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { validateForgotPassword, ForgotPasswordErrors } from "@/utils/validation";
+import { fetchApi, ApiError } from "@/utils/api";
+import { toast } from "@/components/ui/toast";
 
 export default function ForgotPasswordForm() {
     const router = useRouter();
@@ -23,16 +25,35 @@ export default function ForgotPasswordForm() {
         if (Object.keys(newErrors).length > 0) return;
 
         setLoading(true);
-        // Simulate API call
-        setTimeout(() => {
+        try {
+            await fetchApi("/api/v1/auth/forgot-password", {
+                method: "POST",
+                body: { email },
+            });
+            toast.success("OTP verification code sent to your email!");
+            router.push(`/verify-otp?email=${encodeURIComponent(email)}`);
+        } catch (err) {
+            if (err instanceof ApiError) {
+                setErrors({
+                    apiError: err.message,
+                });
+            } else {
+                setErrors({
+                    apiError: "An unexpected error occurred. Please try again.",
+                });
+            }
+        } finally {
             setLoading(false);
-            alert("OTP verification code sent to your email!");
-            router.push("/verify-otp");
-        }, 1500);
+        }
     };
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
+            {errors.apiError && (
+                <div className="p-3 text-xs font-medium text-destructive bg-destructive/10 rounded-md border border-destructive/20 animate-in fade-in-50 slide-in-from-top-1">
+                    {errors.apiError}
+                </div>
+            )}
             {/* Email Field */}
             <div className="space-y-1">
                 <Label htmlFor="email">Email Address</Label>
