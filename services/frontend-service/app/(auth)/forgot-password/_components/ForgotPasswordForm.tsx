@@ -7,8 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { validateForgotPassword, ForgotPasswordErrors } from "@/utils/validation";
-import { fetchApi, ApiError } from "@/utils/api";
+import { ApiError } from "@/utils/api";
 import { toast } from "@/components/ui/toast";
+import { authService } from "@/services/auth";
 
 export default function ForgotPasswordForm() {
     const router = useRouter();
@@ -26,10 +27,7 @@ export default function ForgotPasswordForm() {
 
         setLoading(true);
         try {
-            await fetchApi("/api/v1/auth/forgot-password", {
-                method: "POST",
-                body: { email },
-            });
+            await authService.forgotPassword(email);
             toast.success("OTP verification code sent to your email!");
             router.push(`/verify-otp?email=${encodeURIComponent(email)}`);
         } catch (err) {

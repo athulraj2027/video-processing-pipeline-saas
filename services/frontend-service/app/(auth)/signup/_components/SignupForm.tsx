@@ -8,8 +8,9 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { validateSignup, SignupErrors } from "@/utils/validation";
 import { GoogleButton } from "@/components/ui/google-button";
-import { fetchApi, ApiError } from "@/utils/api";
+import { ApiError } from "@/utils/api";
 import { toast } from "@/components/ui/toast";
+import { authService } from "@/services/auth";
 
 export default function SignupForm() {
     const [email, setEmail] = useState("");
@@ -29,10 +30,7 @@ export default function SignupForm() {
 
         setLoading(true);
         try {
-            await fetchApi("/api/v1/auth/signup", {
-                method: "POST",
-                body: { email, password },
-            });
+            await authService.signup(email, password);
             toast.success("Signup successful! Welcome to flow studio.");
         } catch (err) {
             if (err instanceof ApiError) {
