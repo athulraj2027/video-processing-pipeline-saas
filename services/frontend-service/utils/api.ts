@@ -16,6 +16,7 @@ interface FetchApiOptions extends Omit<RequestInit, "body"> {
     body?: any;
     params?: Record<string, string | number | boolean | undefined>;
     token?: string;
+    idempotencyKey?: string;
 }
 
 const API_BASE_URL = env.NEXT_PUBLIC_API_URL;
@@ -27,10 +28,11 @@ const API_BASE_URL = env.NEXT_PUBLIC_API_URL;
  * - JSON stringification for non-FormData request bodies.
  * - Setting standard headers (e.g. Content-Type: application/json).
  * - Appending the Authorization JWT Bearer token if present.
+ * - Injecting an Idempotency-Key header for state-modifying requests.
  * - Structured error handling by throwing ApiError for non-2xx responses.
  */
 export async function fetchApi<T>(endpoint: string, options: FetchApiOptions = {}): Promise<T> {
-    const { body, params, token, headers, ...customOptions } = options;
+    const { body, params, token, headers, idempotencyKey, ...customOptions } = options;
 
     // 1. Build URL with query parameters
     let url = `${API_BASE_URL}${endpoint.startsWith("/") ? endpoint : `/${endpoint}`}`;
@@ -61,6 +63,13 @@ export async function fetchApi<T>(endpoint: string, options: FetchApiOptions = {
     const authToken = token || getAuthToken();
     if (authToken) {
         requestHeaders.set("Authorization", `Bearer ${authToken}`);
+    }
+
+    // Inject Idempotency-Key header for state-modifying requests (POST, PUT, PATCH)
+    const isWriteMethod = ["POST", "PUT", "PATCH"].includes((customOptions.method || "").toUpperCase());
+    if (isWriteMethod) {
+        const idKey = idempotencyKey || generateUUID();
+        requestHeaders.set("Idempotency-Key", idKey);
     }
 
     // 3. Prepare request init
@@ -111,4 +120,14 @@ function getAuthToken(): string | undefined {
     if (typeof window === "undefined") return undefined;
     // Try to get from cookie first, then localStorage
     return getCookie("token") || localStorage.getItem("token") || undefined;
+}
+
+/**
+ * Generates a unique UUID or fallback random identifier.
+ */
+function generateUUID(): string {
+    if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+        return crypto.randomUUID();
+    }
+    return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
 }
