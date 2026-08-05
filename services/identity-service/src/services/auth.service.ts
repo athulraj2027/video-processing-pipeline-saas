@@ -36,6 +36,11 @@ export class AuthService {
       throw new ConflictError('A user with this email address already exists');
     }
 
+    const existingOtp = await this.otpRepo.getOtpByEmailAndType(data.email, 'VERIFY_EMAIL');
+    if (existingOtp && existingOtp.expiresAt > new Date()) {
+      throw new ConflictError('A verification code has already been sent to your email');
+    }
+
     // Hash password immediately
     const hashedPassword = await bcryptjs.hash(data.passwordHash, 10);
 

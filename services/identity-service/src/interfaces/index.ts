@@ -4,3 +4,5 @@ export * from './user-repository.interface.js';
 export * from './refresh-token-repository.interface.js';
 export * from './otp.interface.js';
 export * from './otp-repository.interface.js';
+export * from './idempotency.interface.js';
+export * from './idempotency-repository.interface.js';
