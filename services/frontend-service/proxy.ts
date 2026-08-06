@@ -1,20 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
+import { publicRoutes } from "./constants/constants";
 
-export default function proxy(request: NextRequest) {
-    // const token = request.cookies.get("token")?.value;
-    // const pathname = request.nextUrl.pathname;
+export async function proxy(req: NextRequest) {
+    const { pathname } = req.nextUrl
+    const token = req.cookies.get("token")?.value
+    const isPublicRoute = publicRoutes.includes(pathname)
+    if (!token && !isPublicRoute) return NextResponse.redirect(new URL("/signin", req.url))
 
-    // // Check if user is trying to access protected routes
-    // const isProtectedRoute = pathname.startsWith("/dashboard");
-    // const isAuthRoute = pathname.startsWith("/signin") || pathname.startsWith("/signup");
+    if (token && isPublicRoute) return NextResponse.redirect(new URL("/dashboard", req.url))
 
-    // if (isProtectedRoute && !token) {
-    //     return NextResponse.redirect(new URL("/signin", request.url));
-    // }
-
-    // if ((pathname === "/" || pathname === "/signup") && token) {
-    //     return NextResponse.redirect(new URL("/dashboard", request.url));
-    // }
-
-    return NextResponse.next();
+    return NextResponse.next()
 }
+
+export const config = {
+    matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
+};

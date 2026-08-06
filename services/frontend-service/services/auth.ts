@@ -14,17 +14,17 @@ export interface AuthResponse {
  * Reusable and centralized API service calls for authentication endpoints.
  */
 export const authService = {
-    signup: async (email: string, password: string) => {
+    signup: async (email: string, password: string, role: string) => {
         return fetchApi("/api/v1/auth/signup", {
             method: "POST",
-            body: { email, password },
+            body: { email, password, role },
         });
     },
 
-    login: async (email: string, password: string) => {
+    login: async (email: string, password: string, role: string) => {
         return fetchApi<AuthResponse>("/api/v1/auth/login", {
             method: "POST",
-            body: { email, password },
+            body: { email, password, role },
         });
     },
 

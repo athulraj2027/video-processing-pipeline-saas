@@ -136,3 +136,7 @@ export const PAGE_CONTENTS: Record<string, PageContent> = {
         description: "Enter the six-digit verification code sent to your inbox to confirm your identity and secure your store dashboard.",
     },
 };
+
+export const DEFAULT_LOGIN_REDIRECT = '/dashboard';
+export const PROTECTEDROUTES = ['/dashboard', '/']
+export const publicRoutes = ['/signup', '/signin', '/forgot-password', '/']
