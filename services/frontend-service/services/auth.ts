@@ -48,4 +48,11 @@ export const authService = {
             body: { email },
         });
     },
+
+    resetPassword: async (email: string, otp: string, password: string) => {
+        return fetchApi("/api/v1/auth/reset-password", {
+            method: "POST",
+            body: { email, otp, password },
+        });
+    },
 };

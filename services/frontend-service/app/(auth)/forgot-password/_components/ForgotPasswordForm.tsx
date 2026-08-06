@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -11,8 +10,11 @@ import { ApiError } from "@/utils/api";
 import { toast } from "@/components/ui/toast";
 import { authService } from "@/services/auth";
 
-export default function ForgotPasswordForm() {
-    const router = useRouter();
+interface ForgotPasswordFormProps {
+    onEmailSubmit: (email: string) => void;
+}
+
+export default function ForgotPasswordForm({ onEmailSubmit }: ForgotPasswordFormProps) {
     const [email, setEmail] = useState("");
     const [loading, setLoading] = useState(false);
     const [errors, setErrors] = useState<ForgotPasswordErrors>({});
@@ -28,8 +30,10 @@ export default function ForgotPasswordForm() {
         setLoading(true);
         try {
             await authService.forgotPassword(email);
-            toast.success("OTP verification code sent to your email!");
-            router.push(`/verify-otp?email=${encodeURIComponent(email)}`);
+            toast.success("Verification code sent to your email!");
+            setTimeout(() => {
+                onEmailSubmit(email);
+            }, 500);
         } catch (err) {
             if (err instanceof ApiError) {
                 setErrors({
