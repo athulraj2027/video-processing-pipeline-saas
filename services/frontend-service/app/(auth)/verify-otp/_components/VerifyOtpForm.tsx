@@ -5,8 +5,9 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { validateVerifyOtp } from "@/utils/validation";
-import { fetchApi, ApiError } from "@/utils/api";
+import { ApiError } from "@/utils/api";
 import { toast } from "@/components/ui/toast";
+import { authService } from "@/services/auth";
 
 export default function VerifyOtpForm() {
     const searchParams = useSearchParams();
@@ -77,10 +78,7 @@ export default function VerifyOtpForm() {
 
         setLoading(true);
         try {
-            await fetchApi("/api/v1/auth/verify-email", {
-                method: "POST",
-                body: { email, otp: otp.join("") },
-            });
+            await authService.verifyEmail(email, otp.join(""));
             toast.success("OTP verified successfully!");
         } catch (err) {
             if (err instanceof ApiError) {
@@ -101,10 +99,7 @@ export default function VerifyOtpForm() {
             }
             setLoading(true);
             try {
-                await fetchApi("/api/v1/auth/forgot-password", {
-                    method: "POST",
-                    body: { email },
-                });
+                await authService.forgotPassword(email);
                 setTimer(59);
                 toast.success("New OTP verification code sent to your email!");
             } catch (err) {

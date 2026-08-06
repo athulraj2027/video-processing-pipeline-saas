@@ -8,8 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { validateSignin, SigninErrors } from "@/utils/validation";
 import { GoogleButton } from "@/components/ui/google-button";
-import { fetchApi, ApiError } from "@/utils/api";
+import { ApiError } from "@/utils/api";
 import { toast } from "@/components/ui/toast";
+import { authService } from "@/services/auth";
 
 export default function SigninForm() {
     const [email, setEmail] = useState("");
@@ -28,10 +29,7 @@ export default function SigninForm() {
 
         setLoading(true);
         try {
-            const data = await fetchApi<{ token: string }>("/api/v1/auth/login", {
-                method: "POST",
-                body: { email, password },
-            });
+            const data = await authService.login(email, password);
             
             // Store token
             if (data.token) {
