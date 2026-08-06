@@ -42,3 +42,20 @@ export const tenantRateLimiter = rateLimit({
         });
     }
 });
+
+export const authRateLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    limit: env.NODE_ENV === 'test' ? 1000 : 15, // limit each IP to 15 auth requests per 15 minutes
+    standardHeaders: true,
+    legacyHeaders: false,
+    store: store,
+    keyGenerator: (req) => {
+        return req.ip || 'unresolved-ip';
+    },
+    handler: (req, res) => {
+        res.status(429).json({
+            error: 'Too Many Requests',
+            message: 'Too many authentication attempts from this IP. Please try again after 15 minutes.',
+        });
+    }
+});

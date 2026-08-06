@@ -3,12 +3,14 @@ import { createProxyMiddleware } from 'http-proxy-middleware';
 import { env } from '../config/env.js';
 import { authenticate, optionalAuthenticate } from '../middlewares/auth.js';
 import { buildProxyOptions } from '../config/proxyOptions.js';
+import { authRateLimiter } from '../middlewares/rate-limiter.js';
 
 const router = Router();
 
 // 1. Identity & Authentication Service
 router.use(
   '/api/v1/auth',
+  authRateLimiter,
   optionalAuthenticate,
   createProxyMiddleware(buildProxyOptions(env.IDENTITY_SERVICE_URL, '/api/v1/auth'))
 );
