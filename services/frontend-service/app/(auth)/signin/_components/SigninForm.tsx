@@ -33,7 +33,7 @@ export default function SigninForm() {
 
         setLoading(true);
         try {
-            const data = await authService.login(email, password, 'tenant');
+            const data = await authService.login(email, password, 'tenant_admin');
             toast.success(ToastConstants.SIGNIN_SUCCESS);
             if (data.accessToken) {
                 setAuthTokens(data.accessToken, data.refreshToken);
