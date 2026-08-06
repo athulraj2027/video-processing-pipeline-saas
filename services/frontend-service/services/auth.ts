@@ -35,4 +35,11 @@ export const authService = {
             body: { email, otp },
         });
     },
+
+    resendVerifyOtp: async (email: string) => {
+        return fetchApi("/api/v1/auth/resend-otp", {
+            method: "POST",
+            body: { email },
+        });
+    },
 };

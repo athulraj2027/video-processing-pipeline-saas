@@ -12,8 +12,13 @@ import { ApiError } from "@/utils/api";
 import { toast } from "@/components/ui/toast";
 import { authService } from "@/services/auth";
 import { ToastConstants } from "@/constants/toast.constants";
+import { useRouter } from "next/navigation";
 
-export default function SignupForm() {
+interface SignupFormProps {
+    onSignupSuccess: (email: string) => void;
+}
+
+export default function SignupForm({ onSignupSuccess }: SignupFormProps) {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
@@ -33,6 +38,9 @@ export default function SignupForm() {
         try {
             await authService.signup(email, password);
             toast.success(ToastConstants.SIGNUP_SUCCESS);
+            setTimeout(() => {
+                onSignupSuccess(email);
+            }, 500);
         } catch (err) {
             if (err instanceof ApiError) {
                 setErrors({
