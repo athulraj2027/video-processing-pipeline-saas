@@ -102,6 +102,44 @@ export class AuthService {
     };
   }
 
+  async resendOtp(data: { email: string }) {
+    // Look up OTP code record
+    const otpRecord = await this.otpRepo.getOtpByEmailAndType(data.email, 'VERIFY_EMAIL');
+    if (!otpRecord) {
+      throw new NotFoundError('Verification code not found or expired');
+    }
+
+    // Validate expiration
+    if (otpRecord.expiresAt < new Date()) {
+      await this.otpRepo.deleteOtpByEmailAndType(data.email, 'VERIFY_EMAIL');
+      throw new UnauthorizedError('Verification code has expired');
+    }
+
+    // Generate new OTP code
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 mins expiry
+
+    // Update OTP in database
+    await this.otpRepo.createOrUpdateOtp({
+      email: data.email,
+      otp: otpCode,
+      type: 'VERIFY_EMAIL',
+      passwordHash: otpRecord.passwordHash!,
+      role: otpRecord.role!,
+      tenantId: otpRecord.tenantId,
+      expiresAt,
+    });
+
+    // Send new verification email
+    await this.emailService.sendVerificationOtp(data.email, otpCode);
+
+    return {
+      email: data.email.toLowerCase(),
+      // Return code in test/dev environments so integration test runs can fetch it
+      ...(env.NODE_ENV !== 'production' && { _testOtp: otpCode }),
+    };
+  }
+
   async verifyEmail(data: { email: string; otp: string }) {
     // Look up OTP code record
     const otpRecord = await this.otpRepo.getOtpByEmailAndType(data.email, 'VERIFY_EMAIL');
