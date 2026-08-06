@@ -43,6 +43,7 @@ export function authenticate(req: Request, res: Response, next: NextFunction) {
     if (decoded.id) req.headers['x-user-id'] = decoded.id;
     if (decoded.role) req.headers['x-user-role'] = decoded.role;
     if (decoded.email) req.headers['x-user-email'] = decoded.email;
+    if (decoded.tenantId) req.headers['x-tenant-id'] = decoded.tenantId;
 
     next();
   } catch (err) {
