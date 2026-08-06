@@ -1,7 +1,13 @@
 import { fetchApi } from "@/utils/api";
 
-export interface LoginResponse {
-    token: string;
+export interface AuthResponse {
+    accessToken: string;
+    refreshToken: string;
+    user: {
+        id: string;
+        email: string;
+        role: string;
+    };
 }
 
 /**
@@ -16,7 +22,7 @@ export const authService = {
     },
 
     login: async (email: string, password: string) => {
-        return fetchApi<LoginResponse>("/api/v1/auth/login", {
+        return fetchApi<AuthResponse>("/api/v1/auth/login", {
             method: "POST",
             body: { email, password },
         });
@@ -30,7 +36,7 @@ export const authService = {
     },
 
     verifyEmail: async (email: string, otp: string) => {
-        return fetchApi("/api/v1/auth/verify-email", {
+        return fetchApi<AuthResponse>("/api/v1/auth/verify-email", {
             method: "POST",
             body: { email, otp },
         });
