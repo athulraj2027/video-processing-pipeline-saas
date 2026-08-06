@@ -2,16 +2,23 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { validateVerifyOtp } from "@/utils/validation";
 import { ApiError } from "@/utils/api";
 import { toast } from "@/components/ui/toast";
 import { authService } from "@/services/auth";
+import { ToastConstants } from "@/constants/toast.constants";
 
-export default function VerifyOtpForm() {
+interface VerifyOtpFormProps {
+    email?: string;
+}
+
+export default function VerifyOtpForm({ email: propEmail }: VerifyOtpFormProps = {}) {
     const searchParams = useSearchParams();
-    const email = searchParams.get("email") || "";
+    const router = useRouter();
+    const queryEmail = searchParams.get("email") || "";
+    const email = propEmail || queryEmail;
     const [otp, setOtp] = useState<string[]>(new Array(6).fill(""));
     const [loading, setLoading] = useState(false);
     const [timer, setTimer] = useState(59);
@@ -69,7 +76,7 @@ export default function VerifyOtpForm() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        
+
         const otpError = validateVerifyOtp(otp);
         if (otpError) {
             setErrors(otpError);
@@ -79,12 +86,15 @@ export default function VerifyOtpForm() {
         setLoading(true);
         try {
             await authService.verifyEmail(email, otp.join(""));
-            toast.success("OTP verified successfully!");
+            toast.success(ToastConstants.VERIFY_OTP_SUCCESS);
+            setTimeout(() => {
+                router.push("/signin");
+            }, 1000);
         } catch (err) {
             if (err instanceof ApiError) {
                 setErrors(err.message);
             } else {
-                setErrors("An unexpected error occurred. Please try again.");
+                setErrors(ToastConstants.VERIFY_OTP_ERROR);
             }
         } finally {
             setLoading(false);
@@ -99,14 +109,14 @@ export default function VerifyOtpForm() {
             }
             setLoading(true);
             try {
-                await authService.forgotPassword(email);
+                await authService.resendVerifyOtp(email);
                 setTimer(59);
-                toast.success("New OTP verification code sent to your email!");
+                toast.success(ToastConstants.OTP_RESEND_SUCCESS);
             } catch (err) {
                 if (err instanceof ApiError) {
                     setErrors(err.message);
                 } else {
-                    setErrors("Failed to resend OTP. Please try again.");
+                    setErrors(ToastConstants.OTP_RESEND_ERROR);
                 }
             } finally {
                 setLoading(false);
