@@ -38,6 +38,19 @@ export const verifyEmail = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+export const resendOtp = catchAsync(async (req: Request, res: Response) => {
+  const { email } = req.body;
+
+  const result = await authService.resendOtp({
+    email,
+  });
+
+  res.json({
+    message: 'Verification OTP sent to your email',
+    ...result,
+  });
+});
+
 export const login = catchAsync(async (req: Request, res: Response) => {
   const { email, password } = req.body;
 
