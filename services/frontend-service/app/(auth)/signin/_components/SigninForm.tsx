@@ -13,6 +13,7 @@ import { toast } from "@/components/ui/toast";
 import { authService } from "@/services/auth";
 import { ToastConstants } from "@/constants/toast.constants";
 import { useRouter } from "next/navigation";
+import { setAuthTokens } from "@/utils/auth";
 
 export default function SigninForm() {
     const [email, setEmail] = useState("");
@@ -34,6 +35,9 @@ export default function SigninForm() {
         try {
             const data = await authService.login(email, password);
             toast.success(ToastConstants.SIGNIN_SUCCESS);
+            if (data.accessToken) {
+                setAuthTokens(data.accessToken, data.refreshToken);
+            }
             if (data) {
                 router.push("/dashboard");
                 router.refresh();

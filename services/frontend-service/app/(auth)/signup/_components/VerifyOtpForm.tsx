@@ -9,6 +9,7 @@ import { ApiError } from "@/utils/api";
 import { toast } from "@/components/ui/toast";
 import { authService } from "@/services/auth";
 import { ToastConstants } from "@/constants/toast.constants";
+import { setAuthTokens } from "@/utils/auth";
 
 interface VerifyOtpFormProps {
     email?: string;
@@ -85,8 +86,13 @@ export default function VerifyOtpForm({ email: propEmail }: VerifyOtpFormProps =
 
         setLoading(true);
         try {
-            await authService.verifyEmail(email, otp.join(""));
+            const data = await authService.verifyEmail(email, otp.join(""));
             toast.success(ToastConstants.VERIFY_OTP_SUCCESS);
+
+            if (data.accessToken) {
+                setAuthTokens(data.accessToken, data.refreshToken);
+            }
+
             setTimeout(() => {
                 router.push("/dashboard");
                 router.refresh()

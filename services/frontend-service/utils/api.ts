@@ -51,7 +51,7 @@ export async function fetchApi<T>(endpoint: string, options: FetchApiOptions = {
 
     // 2. Set headers
     const requestHeaders = new Headers(headers);
-    
+
     // Automatically set Content-Type to JSON if body is present and not FormData
     if (body && !(body instanceof FormData)) {
         if (!requestHeaders.has("Content-Type")) {
@@ -94,6 +94,78 @@ export async function fetchApi<T>(endpoint: string, options: FetchApiOptions = {
         responseData = await response.text();
     }
 
+    // 6. Handle automatic token refresh for 401 Unauthorized responses
+    const isAuthRoute = endpoint.includes("/auth/login") ||
+        endpoint.includes("/auth/refresh") ||
+        endpoint.includes("/auth/verify-email") ||
+        endpoint.includes("/auth/signup");
+
+    if (response.status === 401 && !isAuthRoute) {
+        try {
+            // Attempt to refresh the token
+            const refreshUrl = `${API_BASE_URL}${API_BASE_URL.endsWith("/") ? "" : "/"}api/v1/auth/refresh`;
+
+            const localRefreshToken = getCookie("refreshToken") || null;
+
+            const refreshRes = await fetch(refreshUrl, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    refreshToken: localRefreshToken,
+                }),
+            });
+
+            if (refreshRes.ok) {
+                const refreshData = await refreshRes.json();
+                const newAccessToken = refreshData.accessToken || refreshData.token;
+                const newRefreshToken = refreshData.refreshToken;
+
+                if (typeof window !== "undefined") {
+                    if (newAccessToken) {
+                        document.cookie = `token=${newAccessToken}; path=/; max-age=86400; SameSite=Lax`;
+                    }
+                    if (newRefreshToken) {
+                        document.cookie = `refreshToken=${newRefreshToken}; path=/; max-age=604800; SameSite=Lax`;
+                    }
+                }
+
+                // Update original authorization header and retry original request
+                if (newAccessToken) {
+                    const newHeaders = new Headers(requestInit.headers);
+                    newHeaders.set("Authorization", `Bearer ${newAccessToken}`);
+                    requestInit.headers = newHeaders;
+
+                    const retryResponse = await fetch(url, requestInit);
+
+                    let retryData: any;
+                    const retryContentType = retryResponse.headers.get("content-type");
+                    if (retryContentType && retryContentType.includes("application/json")) {
+                        retryData = await retryResponse.json();
+                    } else {
+                        retryData = await retryResponse.text();
+                    }
+
+                    if (!retryResponse.ok) {
+                        const errMessage = retryData?.message || retryData?.error || `HTTP error! Status: ${retryResponse.status}`;
+                        throw new ApiError(errMessage, retryResponse.status, retryData);
+                    }
+
+                    return retryData as T;
+                }
+            } else {
+                // Refresh token invalid/expired, clear local storage
+                if (typeof window !== "undefined") {
+                    document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC; SameSite=Lax";
+                    document.cookie = "refreshToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC; SameSite=Lax";
+                }
+            }
+        } catch (refreshError) {
+            console.error("Automatic token refresh failed:", refreshError);
+        }
+    }
+
     if (!response.ok) {
         const errorMessage = responseData?.message || responseData?.error || `HTTP error! Status: ${response.status}`;
         throw new ApiError(errorMessage, response.status, responseData);
@@ -118,8 +190,8 @@ function getCookie(name: string): string | undefined {
  */
 function getAuthToken(): string | undefined {
     if (typeof window === "undefined") return undefined;
-    // Try to get from cookie first, then localStorage
-    return getCookie("token") || localStorage.getItem("token") || undefined;
+    // Try to get from cookie
+    return getCookie("token") || undefined;
 }
 
 /**
