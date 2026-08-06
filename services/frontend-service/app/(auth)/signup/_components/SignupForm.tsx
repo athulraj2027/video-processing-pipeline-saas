@@ -11,6 +11,7 @@ import { GoogleButton } from "@/components/ui/google-button";
 import { ApiError } from "@/utils/api";
 import { toast } from "@/components/ui/toast";
 import { authService } from "@/services/auth";
+import { ToastConstants } from "@/constants/toast.constants";
 
 export default function SignupForm() {
     const [email, setEmail] = useState("");
@@ -31,7 +32,7 @@ export default function SignupForm() {
         setLoading(true);
         try {
             await authService.signup(email, password);
-            toast.success("Signup successful! Welcome to flow studio.");
+            toast.success(ToastConstants.SIGNUP_SUCCESS);
         } catch (err) {
             if (err instanceof ApiError) {
                 setErrors({
@@ -39,7 +40,7 @@ export default function SignupForm() {
                 });
             } else {
                 setErrors({
-                    apiError: "An unexpected error occurred. Please try again.",
+                    apiError: ToastConstants.SIGNUP_ERROR,
                 });
             }
         } finally {

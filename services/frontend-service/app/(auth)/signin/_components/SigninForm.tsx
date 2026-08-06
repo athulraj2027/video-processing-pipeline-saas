@@ -11,6 +11,7 @@ import { GoogleButton } from "@/components/ui/google-button";
 import { ApiError } from "@/utils/api";
 import { toast } from "@/components/ui/toast";
 import { authService } from "@/services/auth";
+import { ToastConstants } from "@/constants/toast.constants";
 
 export default function SigninForm() {
     const [email, setEmail] = useState("");
@@ -30,14 +31,14 @@ export default function SigninForm() {
         setLoading(true);
         try {
             const data = await authService.login(email, password);
-            
+
             // Store token
             if (data.token) {
                 document.cookie = `token=${data.token}; path=/; max-age=86400; SameSite=Lax`;
                 localStorage.setItem("token", data.token);
             }
-            
-            toast.success("Signed in successfully!");
+
+            toast.success(ToastConstants.SIGNIN_SUCCESS);
         } catch (err) {
             if (err instanceof ApiError) {
                 setErrors({
@@ -45,7 +46,7 @@ export default function SigninForm() {
                 });
             } else {
                 setErrors({
-                    apiError: "An unexpected error occurred. Please try again.",
+                    apiError: ToastConstants.SIGNIN_ERROR,
                 });
             }
         } finally {
