@@ -12,6 +12,7 @@ import { ApiError } from "@/utils/api";
 import { toast } from "@/components/ui/toast";
 import { authService } from "@/services/auth";
 import { ToastConstants } from "@/constants/toast.constants";
+import { useRouter } from "next/navigation";
 
 export default function SigninForm() {
     const [email, setEmail] = useState("");
@@ -19,6 +20,7 @@ export default function SigninForm() {
     const [rememberMe, setRememberMe] = useState(false);
     const [loading, setLoading] = useState(false);
     const [errors, setErrors] = useState<SigninErrors>({});
+    const router = useRouter();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -31,14 +33,11 @@ export default function SigninForm() {
         setLoading(true);
         try {
             const data = await authService.login(email, password);
-
-            // Store token
-            if (data.token) {
-                document.cookie = `token=${data.token}; path=/; max-age=86400; SameSite=Lax`;
-                localStorage.setItem("token", data.token);
-            }
-
             toast.success(ToastConstants.SIGNIN_SUCCESS);
+            if (data) {
+                router.push("/dashboard");
+                router.refresh();
+            }
         } catch (err) {
             if (err instanceof ApiError) {
                 setErrors({

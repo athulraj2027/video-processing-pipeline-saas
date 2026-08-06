@@ -88,7 +88,8 @@ export default function VerifyOtpForm({ email: propEmail }: VerifyOtpFormProps =
             await authService.verifyEmail(email, otp.join(""));
             toast.success(ToastConstants.VERIFY_OTP_SUCCESS);
             setTimeout(() => {
-                router.push("/signin");
+                router.push("/dashboard");
+                router.refresh()
             }, 1000);
         } catch (err) {
             if (err instanceof ApiError) {
