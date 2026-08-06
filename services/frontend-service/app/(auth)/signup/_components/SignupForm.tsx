@@ -36,7 +36,7 @@ export default function SignupForm({ onSignupSuccess }: SignupFormProps) {
 
         setLoading(true);
         try {
-            await authService.signup(email, password);
+            await authService.signup(email, password, 'tenant_admin');
             toast.success(ToastConstants.SIGNUP_SUCCESS);
             setTimeout(() => {
                 onSignupSuccess(email);
