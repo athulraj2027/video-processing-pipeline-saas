@@ -7,6 +7,7 @@ export interface AuthResponse {
         id: string;
         email: string;
         role: string;
+        tenantId?: string;
     };
 }
 
@@ -53,6 +54,19 @@ export const authService = {
         return fetchApi("/api/v1/auth/reset-password", {
             method: "POST",
             body: { email, otp, password },
+        });
+    },
+
+    refresh: async (refreshToken?: string) => {
+        return fetchApi<AuthResponse>("/api/v1/auth/refresh", {
+            method: "POST",
+            body: { refreshToken },
+        });
+    },
+
+    getMe: async () => {
+        return fetchApi<{ user: AuthResponse["user"] }>("/api/v1/auth/me", {
+            method: "GET",
         });
     },
 };

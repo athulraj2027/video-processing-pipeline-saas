@@ -9,7 +9,8 @@ import {
     verifyEmail,
     forgotPassword,
     resetPassword,
-    resendOtp
+    resendOtp,
+    updateUserTenant
 } from '../controllers/auth.controller.js';
 import { getMe } from '../controllers/user.controller.js';
 import { validateBody } from '../middlewares/middleware.js';
@@ -35,6 +36,7 @@ router.post('/forgot-password', validateBody(forgotPasswordSchema), forgotPasswo
 router.post('/reset-password', validateBody(resetPasswordSchema), resetPassword);
 router.post('/refresh', validateBody(refreshSchema), refresh);
 router.post('/logout', validateBody(logoutSchema), logout);
+router.patch('/users/:userId/tenant', updateUserTenant);
 router.get('/me', authenticate, getMe);
 
 export default router;

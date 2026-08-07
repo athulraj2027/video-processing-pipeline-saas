@@ -116,3 +116,19 @@ export const logout = catchAsync(async (req: Request, res: Response) => {
   res.clearCookie('refreshToken');
   res.json({ message: 'Logged out successfully' });
 });
+
+export const updateUserTenant = catchAsync(async (req: Request, res: Response) => {
+  const { userId } = req.params;
+  const { tenantId } = req.body;
+
+  const user = await authService.updateUserTenant(userId, tenantId);
+  res.json({
+    message: 'User tenant association updated successfully',
+    user: {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      tenantId: user.tenantId,
+    },
+  });
+});

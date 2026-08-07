@@ -92,6 +92,14 @@ export class UserService {
     }
     return this.repo.listTenantUsers(tenantId);
   }
+
+  async syncUser(id: string, email: string) {
+    return prisma.user.upsert({
+      where: { id },
+      update: { email: email.toLowerCase() },
+      create: { id, email: email.toLowerCase() },
+    });
+  }
 }
 
 export const userService = new UserService();
