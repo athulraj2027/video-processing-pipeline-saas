@@ -89,6 +89,50 @@ export class TenantService {
       await this.domainRepo.addDomain(tenant.id, `${tenant.primarySubdomain}.localhost:3000`, 'SUBDOMAIN');
     }
 
+    // Automatically assign creator user as OWNER of the new tenant
+    if (data.createdById) {
+      try {
+        // Ensure user exists in local replica table before creating TenantUser relation
+        const localUserExists = await prisma.user.findUnique({ where: { id: data.createdById } });
+        if (!localUserExists) {
+          // If for some reason the sync was delayed, insert user replica now
+          // Fetching user details would require identity endpoint, or we can use default values
+          await prisma.user.create({
+            data: {
+              id: data.createdById,
+              email: data.supportEmail || `${tenant.slug}@unresolved-email.local`,
+            }
+          });
+        }
+
+        await prisma.tenantUser.create({
+          data: {
+            tenantId: tenant.id,
+            userId: data.createdById,
+            role: 'OWNER',
+            status: 'active',
+          },
+        });
+
+        // Call identity-service to assign user's tenant context
+        const patchResponse = await fetch(`http://localhost:4001/api/v1/auth/users/${data.createdById}/tenant`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            tenantId: tenant.id,
+          }),
+        });
+
+        if (!patchResponse.ok) {
+          console.error(`❌ Identity service user-tenant link update failed: ${patchResponse.status}`);
+        }
+      } catch (err) {
+        console.error('❌ Failed to establish user-tenant mapping links:', err);
+      }
+    }
+
     await this.auditRepo.createAuditLog({
       tenantId: tenant.id,
       actorUserId: data.createdById,

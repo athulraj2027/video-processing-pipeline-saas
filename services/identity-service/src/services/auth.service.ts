@@ -168,11 +168,33 @@ export class AuthService {
       tenantId: otpRecord.tenantId,
     });
 
+    // Replicate user record to tenant service database asynchronously
+    await this.replicateUserToTenantService(newUser.id, newUser.email);
+
     // Clear verification session
     await this.otpRepo.deleteOtpByEmailAndType(data.email, 'VERIFY_EMAIL');
 
     // Auto-login upon successful verification
     return this.generateTokensForUser(newUser);
+  }
+
+  async replicateUserToTenantService(userId: string, email: string) {
+    const url = `${env.TENANT_SERVICE_URL}/api/v1/tenants/users/sync`;
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ id: userId, email }),
+      });
+
+      if (!response.ok) {
+        console.error(`❌ User replication failed with status ${response.status}`);
+      }
+    } catch (err) {
+      console.error('❌ Failed to connect to Tenant Service for user replication:', err);
+    }
   }
 
   async forgotPassword(email: string) {
@@ -303,6 +325,14 @@ export class AuthService {
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     };
+  }
+
+  async updateUserTenant(id: string, tenantId: string) {
+    const user = await this.userRepo.getUserById(id);
+    if (!user) {
+      throw new NotFoundError('User profile not found');
+    }
+    return this.userRepo.updateUserTenant(id, tenantId);
   }
 }
 

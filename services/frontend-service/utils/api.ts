@@ -1,4 +1,5 @@
 import { env } from "./env";
+import { getCookie } from "./cookie";
 
 export class ApiError extends Error {
     status: number;
@@ -174,16 +175,6 @@ export async function fetchApi<T>(endpoint: string, options: FetchApiOptions = {
     return responseData as T;
 }
 
-/**
- * Helper utility to extract cookies on the client side.
- */
-function getCookie(name: string): string | undefined {
-    if (typeof document === "undefined") return undefined;
-    const value = `; ${document.cookie}`;
-    const parts = value.split(`; ${name}=`);
-    if (parts.length === 2) return parts.pop()?.split(";").shift();
-    return undefined;
-}
 
 /**
  * Retrieves the authorization token from storage (cookie or localStorage).

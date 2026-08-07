@@ -33,3 +33,12 @@ export const listTenantUsers = catchAsync(async (req: Request, res: Response) =>
   const users = await userService.listTenantUsers(tenantId);
   res.json({ users });
 });
+
+export const syncUser = catchAsync(async (req: Request, res: Response) => {
+  const { id, email } = req.body;
+  const user = await userService.syncUser(id, email);
+  res.status(200).json({
+    success: true,
+    user,
+  });
+});

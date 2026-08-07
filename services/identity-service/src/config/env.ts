@@ -15,6 +15,7 @@ const envSchema = z.object({
   REFRESH_TOKEN_SECRET: z.string().min(8, 'REFRESH_TOKEN_SECRET must be at least 8 characters long'),
   REFRESH_TOKEN_EXPIRES_IN: z.string().default('7d'),
   DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
+  TENANT_SERVICE_URL: z.string().url().default('http://localhost:4005'),
 });
 
 function validateEnv() {
